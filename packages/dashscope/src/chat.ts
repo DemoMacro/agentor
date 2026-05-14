@@ -301,7 +301,7 @@ export class DashScopeChatLanguageModel implements LanguageModelV3 {
     const { args, warnings } = await this.getArgs(options);
 
     const { responseHeaders, value: response } = await postJsonToApi({
-      url: `${this.config.baseURL}/chat/completions`,
+      url: `${this.config.baseURL}/compatible-mode/v1/chat/completions`,
       headers: combineHeaders(this.config.headers(), options.headers),
       body: args,
       failedResponseHandler,
@@ -355,7 +355,7 @@ export class DashScopeChatLanguageModel implements LanguageModelV3 {
     const body = { ...args, stream: true };
 
     const { responseHeaders, value: response } = await postJsonToApi({
-      url: `${this.config.baseURL}/chat/completions`,
+      url: `${this.config.baseURL}/compatible-mode/v1/chat/completions`,
       headers: combineHeaders(this.config.headers(), options.headers),
       body,
       failedResponseHandler,

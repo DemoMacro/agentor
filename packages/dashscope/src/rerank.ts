@@ -69,7 +69,7 @@ export class DashScopeRerankingModel implements RerankingModelV3 {
     };
 
     const { responseHeaders, value: response } = await postJsonToApi({
-      url: `${this.config.baseURL.replace("/compatible-mode/", "/compatible-api/")}/reranks`,
+      url: `${this.config.baseURL}/compatible-api/v1/reranks`,
       headers: combineHeaders(this.config.headers(), options.headers),
       body,
       failedResponseHandler: failedResponseHandler as ReturnType<

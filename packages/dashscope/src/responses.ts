@@ -538,7 +538,7 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV3 {
     const { args: body, warnings } = await this.getArgs(options);
 
     const { responseHeaders, value: response } = await postJsonToApi({
-      url: `${this.config.baseURL}/responses`,
+      url: `${this.config.baseURL}/compatible-mode/v1/responses`,
       headers: combineHeaders(this.config.headers(), options.headers),
       body,
       failedResponseHandler,
@@ -589,7 +589,7 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV3 {
     const { args: body, warnings } = await this.getArgs(options);
 
     const { responseHeaders, value: response } = await postJsonToApi({
-      url: `${this.config.baseURL}/responses`,
+      url: `${this.config.baseURL}/compatible-mode/v1/responses`,
       headers: combineHeaders(this.config.headers(), options.headers),
       body: { ...body, stream: true },
       failedResponseHandler,

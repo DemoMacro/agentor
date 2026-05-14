@@ -15,7 +15,7 @@ export class DashScopeEmbeddingModel extends OpenAICompatibleEmbeddingModel {
   constructor(modelId: string, config: DashScopeConfig) {
     super(modelId, {
       provider: config.provider,
-      url: () => `${config.baseURL}/embeddings`,
+      url: () => `${config.baseURL}/compatible-mode/v1/embeddings`,
       headers: config.headers as () => Record<string, string | undefined>,
       fetch: config.fetch as FetchFunction | undefined,
     });

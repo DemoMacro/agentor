@@ -1,7 +1,10 @@
 import { DashScopeChatLanguageModel } from "./chat";
 import { DashScopeEmbeddingModel } from "./embedding";
+import { DashScopeImageModel } from "./image";
 import { DashScopeRerankingModel } from "./rerank";
 import { DashScopeResponsesLanguageModel } from "./responses";
+import { DashScopeSpeechModel } from "./speech";
+import { DashScopeTranscriptionModel } from "./transcription";
 import { responsesTools } from "./tools";
 import type {
   DashScopeChatOptions,
@@ -9,29 +12,28 @@ import type {
   DashScopeProviderSettings,
   DashScopeResponsesOptions,
 } from "./types";
-import { DASHSCOPE_REGION_BASE_URLS } from "./types";
+import { DASHSCOPE_REGION_URLS } from "./types";
+import { DashScopeVideoModel } from "./video";
 
 export function createDashScope(options: DashScopeProviderSettings = {}): DashScopeProvider {
   const {
     region = "beijing",
     workspaceId,
     baseURL: explicitBaseURL,
-    videoBaseURL: _explicitVideoBaseURL,
     includeUsage,
     ...rest
   } = options;
-
-  const regionUrls = DASHSCOPE_REGION_BASE_URLS[region];
-  const baseURL = (explicitBaseURL ?? regionUrls.baseURL).replace(
-    "{workspaceId}",
-    workspaceId ?? "",
-  );
 
   if (region === "germany" && !explicitBaseURL && !workspaceId) {
     throw new Error(
       "workspaceId is required when region is 'germany'. See https://help.aliyun.com/zh/model-studio/obtain-the-app-id-and-workspace-id",
     );
   }
+
+  const baseURL = (explicitBaseURL ?? DASHSCOPE_REGION_URLS[region]).replace(
+    "{workspaceId}",
+    workspaceId ?? "",
+  );
 
   const apiKey = rest.apiKey ?? process.env.DASHSCOPE_API_KEY;
 
@@ -46,43 +48,67 @@ export function createDashScope(options: DashScopeProviderSettings = {}): DashSc
     return headers;
   };
 
-  const chatConfig = {
-    provider: "dashscope",
+  const baseConfig = {
+    provider: "dashscope" as const,
     baseURL,
     headers: getHeaders,
     fetch: rest.fetch,
-    includeUsage,
   };
 
-  const createChatModel = (modelId: string) => new DashScopeChatLanguageModel(modelId, chatConfig);
+  const createChatModel = (modelId: string) =>
+    new DashScopeChatLanguageModel(modelId, { ...baseConfig, includeUsage });
 
   const createEmbeddingModel = (modelId: string) =>
-    new DashScopeEmbeddingModel(modelId, chatConfig);
+    new DashScopeEmbeddingModel(modelId, { ...baseConfig, includeUsage });
 
   const createRerankingModel = (modelId: string) =>
     new DashScopeRerankingModel(modelId, {
+      ...baseConfig,
       provider: "dashscope.rerank",
-      baseURL,
-      headers: getHeaders,
-      fetch: rest.fetch,
     });
 
   const createResponsesModel = (modelId: string) =>
     new DashScopeResponsesLanguageModel(modelId, {
+      ...baseConfig,
       provider: "dashscope.responses",
-      baseURL,
-      headers: getHeaders,
-      fetch: rest.fetch,
     });
 
   const responses = Object.assign(createResponsesModel, {
     tools: responsesTools,
   });
 
+  const createImageModel = (modelId: string) =>
+    new DashScopeImageModel(modelId, {
+      ...baseConfig,
+      provider: "dashscope.image",
+    });
+
+  const createVideoModel = (modelId: string) =>
+    new DashScopeVideoModel(modelId, {
+      ...baseConfig,
+      provider: "dashscope.video",
+    });
+
+  const createSpeechModel = (modelId: string) =>
+    new DashScopeSpeechModel(modelId, {
+      ...baseConfig,
+      provider: "dashscope.speech",
+    });
+
+  const createTranscriptionModel = (modelId: string) =>
+    new DashScopeTranscriptionModel(modelId, {
+      ...baseConfig,
+      provider: "dashscope.transcription",
+    });
+
   return Object.assign(createChatModel, {
     languageModel: createChatModel,
     embeddingModel: createEmbeddingModel,
     rerankingModel: createRerankingModel,
+    imageModel: createImageModel,
+    videoModel: createVideoModel,
+    speechModel: createSpeechModel,
+    transcriptionModel: createTranscriptionModel,
     chatOptions: (chatOpts: DashScopeChatOptions) => ({
       providerOptions: { dashscope: chatOpts },
     }),

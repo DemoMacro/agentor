@@ -12,7 +12,7 @@ export interface DashScopeConfig {
   includeUsage?: boolean;
 }
 
-// --- Error handling ---
+// --- Error handling (OpenAI-compatible endpoints) ---
 
 export const errorSchema = zodSchema(
   z.object({
@@ -27,6 +27,21 @@ export const errorSchema = zodSchema(
 export const failedResponseHandler = createJsonErrorResponseHandler({
   errorSchema,
   errorToMessage: (data) => data.error.message,
+});
+
+// --- Error handling (DashScope native endpoints) ---
+
+export const nativeErrorSchema = zodSchema(
+  z.object({
+    code: z.string().nullish(),
+    message: z.string(),
+    request_id: z.string().nullish(),
+  }),
+);
+
+export const nativeFailedHandler = createJsonErrorResponseHandler({
+  errorSchema: nativeErrorSchema,
+  errorToMessage: (data) => data.message,
 });
 
 // --- Usage (Responses API) ---
@@ -61,4 +76,14 @@ export function convertResponsesUsage(usage: ResponsesUsage | undefined): Langua
     },
     raw: usage as unknown as JSONObject,
   };
+}
+
+// --- Base64 utility ---
+
+export function uint8ArrayToBase64(data: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < data.length; i++) {
+    binary += String.fromCharCode(data[i]!);
+  }
+  return btoa(binary);
 }

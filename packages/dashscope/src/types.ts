@@ -1,4 +1,12 @@
-import type { EmbeddingModelV3, LanguageModelV3, RerankingModelV3 } from "@ai-sdk/provider";
+import type {
+  EmbeddingModelV3,
+  Experimental_VideoModelV3 as VideoModelV3,
+  ImageModelV3,
+  LanguageModelV3,
+  RerankingModelV3,
+  SpeechModelV3,
+  TranscriptionModelV3,
+} from "@ai-sdk/provider";
 import type { FetchFunction } from "@ai-sdk/provider-utils";
 import type { DashScopeResponsesTools } from "./tools";
 
@@ -6,26 +14,11 @@ import type { DashScopeResponsesTools } from "./tools";
 
 export type DashScopeRegion = "beijing" | "singapore" | "us" | "germany";
 
-export const DASHSCOPE_REGION_BASE_URLS: Record<
-  DashScopeRegion,
-  { baseURL: string; videoBaseURL: string }
-> = {
-  beijing: {
-    baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    videoBaseURL: "https://dashscope.aliyuncs.com",
-  },
-  singapore: {
-    baseURL: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-    videoBaseURL: "https://dashscope-intl.aliyuncs.com",
-  },
-  us: {
-    baseURL: "https://dashscope-us.aliyuncs.com/compatible-mode/v1",
-    videoBaseURL: "https://dashscope-us.aliyuncs.com",
-  },
-  germany: {
-    baseURL: "https://{workspaceId}.eu-central-1.maas.aliyuncs.com/compatible-mode/v1",
-    videoBaseURL: "https://{workspaceId}.eu-central-1.maas.aliyuncs.com",
-  },
+export const DASHSCOPE_REGION_URLS: Record<DashScopeRegion, string> = {
+  beijing: "https://dashscope.aliyuncs.com",
+  singapore: "https://dashscope-intl.aliyuncs.com",
+  us: "https://dashscope-us.aliyuncs.com",
+  germany: "https://{workspaceId}.eu-central-1.maas.aliyuncs.com",
 };
 
 // --- Provider settings ---
@@ -35,7 +28,6 @@ export interface DashScopeProviderSettings {
   region?: DashScopeRegion;
   workspaceId?: string;
   baseURL?: string;
-  videoBaseURL?: string;
   headers?: Record<string, string>;
   fetch?: FetchFunction;
   includeUsage?: boolean;
@@ -90,6 +82,10 @@ export interface DashScopeProvider {
   languageModel(modelId: string): LanguageModelV3;
   embeddingModel(modelId: string): EmbeddingModelV3;
   rerankingModel(modelId: string): RerankingModelV3;
+  imageModel(modelId: string): ImageModelV3;
+  videoModel(modelId: string): VideoModelV3;
+  speechModel(modelId: string): SpeechModelV3;
+  transcriptionModel(modelId: string): TranscriptionModelV3;
   chatOptions: (options: DashScopeChatOptions) => {
     providerOptions: { dashscope: DashScopeChatOptions };
   };
