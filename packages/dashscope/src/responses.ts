@@ -1,5 +1,4 @@
 import type {
-  JSONObject,
   LanguageModelV3,
   LanguageModelV3CallOptions,
   LanguageModelV3Content,
@@ -15,27 +14,22 @@ import type {
   LanguageModelV3ToolResultPart,
   LanguageModelV3Usage,
 } from "@ai-sdk/provider";
-import type { FetchFunction } from "@ai-sdk/provider-utils";
 import {
   combineHeaders,
   createEventSourceResponseHandler,
-  createJsonErrorResponseHandler,
   createJsonResponseHandler,
   parseProviderOptions,
   postJsonToApi,
   zodSchema,
 } from "@ai-sdk/provider-utils";
 import { z } from "zod/v4";
+import {
+  convertResponsesUsage,
+  failedResponseHandler,
+  type DashScopeConfig,
+  type ResponsesUsage,
+} from "./utils";
 import type { DashScopeResponsesOptions } from "./types";
-
-// --- Config ---
-
-export interface DashScopeResponsesConfig {
-  provider: string;
-  baseURL: string;
-  headers: () => Record<string, string>;
-  fetch?: FetchFunction;
-}
 
 // --- Schemas ---
 
@@ -51,16 +45,6 @@ const responsesOptionsSchema = zodSchema(
     conversation: z.string().optional(),
     instructions: z.string().optional(),
     includeUsage: z.boolean().optional(),
-  }),
-);
-
-const errorSchema = zodSchema(
-  z.object({
-    error: z.object({
-      message: z.string(),
-      type: z.string().optional(),
-      code: z.string().optional(),
-    }),
   }),
 );
 
@@ -89,48 +73,7 @@ const responseSchema = zodSchema(
 
 const streamChunkSchema = zodSchema(z.object({ type: z.string() }).loose());
 
-const failedResponseHandler = createJsonErrorResponseHandler({
-  errorSchema,
-  errorToMessage: (data) => data.error.message,
-});
-
 // --- Helpers ---
-
-function convertUsage(usage?: Record<string, unknown>): LanguageModelV3Usage {
-  if (!usage) {
-    return {
-      inputTokens: {
-        total: 0,
-        noCache: undefined,
-        cacheRead: undefined,
-        cacheWrite: undefined,
-      },
-      outputTokens: {
-        total: 0,
-        text: undefined,
-        reasoning: undefined,
-      },
-    };
-  }
-
-  const details = usage.output_tokens_details as Record<string, number> | undefined;
-  const inputDetails = usage.input_tokens_details as Record<string, number> | undefined;
-
-  return {
-    inputTokens: {
-      total: (usage.input_tokens as number) ?? 0,
-      noCache: undefined,
-      cacheRead: inputDetails?.cached_tokens ?? undefined,
-      cacheWrite: undefined,
-    },
-    outputTokens: {
-      total: (usage.output_tokens as number) ?? 0,
-      text: undefined,
-      reasoning: details?.reasoning_tokens ?? undefined,
-    },
-    raw: usage as JSONObject,
-  };
-}
 
 function mapFinishReason(status?: string): LanguageModelV3FinishReason {
   switch (status) {
@@ -533,9 +476,9 @@ function convertInput(prompt: Array<LanguageModelV3Message>): Array<Record<strin
 export class DashScopeResponsesLanguageModel implements LanguageModelV3 {
   readonly specificationVersion = "v3" as const;
   readonly modelId: string;
-  private readonly config: DashScopeResponsesConfig;
+  private readonly config: DashScopeConfig;
 
-  constructor(modelId: string, config: DashScopeResponsesConfig) {
+  constructor(modelId: string, config: DashScopeConfig) {
     this.modelId = modelId;
     this.config = config;
   }
@@ -621,7 +564,7 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV3 {
     return {
       content,
       finishReason,
-      usage: convertUsage(response.usage as Record<string, unknown> | undefined),
+      usage: convertResponsesUsage(response.usage as ResponsesUsage | undefined),
       request: { body },
       response: {
         id: response.id ?? undefined,
@@ -723,7 +666,7 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV3 {
                 const resp = val.response as Record<string, unknown> | undefined;
                 finishReason = mapFinishReason(resp?.status as string | undefined);
                 if (resp?.usage) {
-                  usage = convertUsage(resp.usage as Record<string, unknown>);
+                  usage = convertResponsesUsage(resp.usage as ResponsesUsage);
                 }
                 if (resp?.id) {
                   controller.enqueue({

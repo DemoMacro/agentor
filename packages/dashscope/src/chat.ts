@@ -1,4 +1,9 @@
-import { mapOpenAICompatibleFinishReason, prepareTools } from "@ai-sdk/openai-compatible/internal";
+import {
+  convertOpenAICompatibleChatUsage,
+  getResponseMetadata,
+  mapOpenAICompatibleFinishReason,
+  prepareTools,
+} from "@ai-sdk/openai-compatible/internal";
 import type {
   LanguageModelV3,
   LanguageModelV3CallOptions,
@@ -7,14 +12,12 @@ import type {
   LanguageModelV3GenerateResult,
   LanguageModelV3StreamPart,
   LanguageModelV3StreamResult,
-  LanguageModelV3Usage,
   SharedV3Warning,
 } from "@ai-sdk/provider";
 import {
   combineHeaders,
   convertToBase64,
   createEventSourceResponseHandler,
-  createJsonErrorResponseHandler,
   createJsonResponseHandler,
   generateId,
   isParsableJson,
@@ -23,7 +26,8 @@ import {
   type ParseResult,
 } from "@ai-sdk/provider-utils";
 import { z } from "zod/v4";
-import type { DashScopeChatConfig, DashScopeChatOptions } from "./types";
+import { failedResponseHandler, type DashScopeConfig } from "./utils";
+import type { DashScopeChatOptions } from "./types";
 
 // --- Schemas ---
 
@@ -115,51 +119,6 @@ const chatChunkSchema = z.object({
   ),
   usage: usageSchema.nullish(),
 });
-
-const errorSchema = z.object({
-  error: z.object({
-    message: z.string(),
-    code: z.string().nullish(),
-    type: z.string().nullish(),
-  }),
-});
-
-const failedResponseHandler = createJsonErrorResponseHandler({
-  errorSchema,
-  errorToMessage: (data) => data.error.message,
-});
-
-// --- Helpers ---
-
-function convertUsage(usage: z.infer<typeof usageSchema> | undefined | null): LanguageModelV3Usage {
-  if (!usage) {
-    return {
-      inputTokens: { total: 0, noCache: undefined, cacheRead: undefined, cacheWrite: undefined },
-      outputTokens: { total: 0, text: undefined, reasoning: undefined },
-    };
-  }
-
-  const cacheRead = usage.prompt_tokens_details?.cached_tokens ?? undefined;
-  const cacheWrite = usage.prompt_tokens_details?.cache_creation_input_tokens ?? undefined;
-  const noCache =
-    cacheRead != null || cacheWrite != null
-      ? (usage.prompt_tokens ?? 0) - (cacheRead ?? 0) - (cacheWrite ?? 0)
-      : undefined;
-
-  return {
-    inputTokens: {
-      total: usage.prompt_tokens ?? 0,
-      noCache,
-      cacheRead,
-      cacheWrite,
-    },
-    outputTokens: {
-      total: usage.completion_tokens ?? 0,
-      text: undefined,
-      reasoning: usage.completion_tokens_details?.reasoning_tokens ?? undefined,
-    },
-  };
-}
 
 // --- Message conversion ---
 
@@ -267,9 +226,9 @@ function convertMessages(
 export class DashScopeChatLanguageModel implements LanguageModelV3 {
   readonly specificationVersion = "v3" as const;
   readonly modelId: string;
-  private readonly config: DashScopeChatConfig;
+  private readonly config: DashScopeConfig;
 
-  constructor(modelId: string, config: DashScopeChatConfig) {
+  constructor(modelId: string, config: DashScopeConfig) {
     this.modelId = modelId;
     this.config = config;
   }
@@ -391,12 +350,10 @@ export class DashScopeChatLanguageModel implements LanguageModelV3 {
     return {
       content,
       finishReason,
-      usage: convertUsage(response.usage),
+      usage: convertOpenAICompatibleChatUsage(response.usage),
       request: { body: JSON.stringify(args) },
       response: {
-        id: response.id ?? undefined,
-        modelId: response.model ?? undefined,
-        timestamp: response.created ? new Date(response.created * 1000) : undefined,
+        ...getResponseMetadata(response),
         headers: responseHeaders,
       },
       warnings,
@@ -456,9 +413,7 @@ export class DashScopeChatLanguageModel implements LanguageModelV3 {
               isFirstChunk = false;
               controller.enqueue({
                 type: "response-metadata",
-                id: value.id ?? undefined,
-                modelId: value.model ?? undefined,
-                timestamp: value.created ? new Date(value.created * 1000) : undefined,
+                ...getResponseMetadata(value),
               });
             }
 
@@ -597,7 +552,7 @@ export class DashScopeChatLanguageModel implements LanguageModelV3 {
             controller.enqueue({
               type: "finish",
               finishReason,
-              usage: convertUsage(usage),
+              usage: convertOpenAICompatibleChatUsage(usage),
             });
           },
         }),

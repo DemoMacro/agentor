@@ -1,5 +1,5 @@
-import type { FetchFunction } from "@ai-sdk/provider-utils";
 import type { LanguageModelV3 } from "@ai-sdk/provider";
+import type { FetchFunction } from "@ai-sdk/provider-utils";
 import type { DashScopeResponsesTools } from "./tools";
 
 // --- Region ---
@@ -61,16 +61,6 @@ export interface DashScopeChatOptions {
   searchStrategy?: "enable" | "enable_with_history" | "agent_max";
   /** Enable code interpreter (requires enableThinking). */
   enableCodeInterpreter?: boolean;
-}
-
-// --- Chat config (internal) ---
-
-export interface DashScopeChatConfig {
-  provider: string;
-  baseURL: string;
-  headers: () => Record<string, string>;
-  fetch?: FetchFunction;
-  includeUsage?: boolean;
 }
 
 // --- Responses API options ---

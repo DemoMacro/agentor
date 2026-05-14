@@ -251,10 +251,10 @@ const first = await generateText({
 import { createDashScope } from "@agentor/dashscope";
 
 const dashscope = createDashScope({
-  apiKey: "sk-xxx",                       // or set DASHSCOPE_API_KEY env var
-  region: "beijing",                       // beijing | singapore | us | germany
-  workspaceId: "ws-xxx",                   // required for germany region
-  baseURL: "https://custom-endpoint.com",  // override default base URL
+  apiKey: "sk-xxx", // or set DASHSCOPE_API_KEY env var
+  region: "beijing", // beijing | singapore | us | germany
+  workspaceId: "ws-xxx", // required for germany region
+  baseURL: "https://custom-endpoint.com", // override default base URL
   headers: { "X-Custom-Header": "value" }, // custom headers
 });
 ```
