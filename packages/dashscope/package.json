@@ -1,0 +1,54 @@
+{
+  "name": "@agentor/dashscope",
+  "version": "0.0.0",
+  "description": "AI SDK provider for Alibaba Cloud DashScope (Bailian) API",
+  "keywords": [
+    "ai",
+    "ai-sdk",
+    "alibaba",
+    "aliyun",
+    "bailian",
+    "dashscope",
+    "qwen"
+  ],
+  "homepage": "https://github.com/DemoMacro/agentor#readme",
+  "bugs": {
+    "url": "https://github.com/DemoMacro/agentor/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Demo Macro",
+    "email": "abc@imst.xyz",
+    "url": "https://www.demomacro.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DemoMacro/agentor.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "dev": "basis build --stub",
+    "build": "basis build",
+    "prepack": "pnpm build"
+  },
+  "dependencies": {
+    "@ai-sdk/openai-compatible": "2.0.47",
+    "@ai-sdk/provider": "3.0.10",
+    "@ai-sdk/provider-utils": "4.0.27",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "ai": "6.0.182"
+  }
+}
