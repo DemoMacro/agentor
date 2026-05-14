@@ -276,17 +276,7 @@ export class DashScopeChatLanguageModel implements LanguageModelV3 {
       ...(options.stopSequences?.length && { stop: options.stopSequences }),
       ...(options.seed != null && { seed: options.seed }),
       ...(options.responseFormat?.type === "json" && {
-        response_format:
-          options.responseFormat.schema != null
-            ? {
-                type: "json_schema",
-                json_schema: {
-                  schema: options.responseFormat.schema,
-                  name: options.responseFormat.name ?? "response",
-                  description: options.responseFormat.description,
-                },
-              }
-            : { type: "json_object" },
+        response_format: { type: "json_object" },
       }),
       ...(apiTools != null && { tools: apiTools, tool_choice: toolChoice }),
       ...(dsOptions?.parallelToolCalls != null && {
