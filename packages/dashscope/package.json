@@ -1,6 +1,6 @@
 {
   "name": "@agentor/dashscope",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "AI SDK provider for Alibaba Cloud DashScope (Bailian) API",
   "keywords": [
     "ai",

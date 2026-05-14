@@ -1,5 +1,5 @@
-import type { LanguageModelV3Usage } from "@ai-sdk/provider";
-import { createJsonErrorResponseHandler, zodSchema } from "@ai-sdk/provider-utils";
+import type { JSONObject, LanguageModelV3Usage } from "@ai-sdk/provider";
+import { createJsonErrorResponseHandler, FetchFunction, zodSchema } from "@ai-sdk/provider-utils";
 import { z } from "zod/v4";
 
 // --- Config ---
@@ -8,7 +8,7 @@ export interface DashScopeConfig {
   provider: string;
   baseURL: string;
   headers: () => Record<string, string>;
-  fetch?: import("@ai-sdk/provider-utils").FetchFunction;
+  fetch?: FetchFunction;
   includeUsage?: boolean;
 }
 
@@ -59,6 +59,6 @@ export function convertResponsesUsage(usage: ResponsesUsage | undefined): Langua
       text: undefined,
       reasoning: usage.output_tokens_details?.reasoning_tokens ?? undefined,
     },
-    raw: usage as unknown as import("@ai-sdk/provider").JSONObject,
+    raw: usage as unknown as JSONObject,
   };
 }

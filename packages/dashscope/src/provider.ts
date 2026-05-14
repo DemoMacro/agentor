@@ -1,4 +1,6 @@
 import { DashScopeChatLanguageModel } from "./chat";
+import { DashScopeEmbeddingModel } from "./embedding";
+import { DashScopeRerankingModel } from "./rerank";
 import { DashScopeResponsesLanguageModel } from "./responses";
 import { responsesTools } from "./tools";
 import type {
@@ -54,6 +56,17 @@ export function createDashScope(options: DashScopeProviderSettings = {}): DashSc
 
   const createChatModel = (modelId: string) => new DashScopeChatLanguageModel(modelId, chatConfig);
 
+  const createEmbeddingModel = (modelId: string) =>
+    new DashScopeEmbeddingModel(modelId, chatConfig);
+
+  const createRerankingModel = (modelId: string) =>
+    new DashScopeRerankingModel(modelId, {
+      provider: "dashscope.rerank",
+      baseURL,
+      headers: getHeaders,
+      fetch: rest.fetch,
+    });
+
   const createResponsesModel = (modelId: string) =>
     new DashScopeResponsesLanguageModel(modelId, {
       provider: "dashscope.responses",
@@ -68,6 +81,8 @@ export function createDashScope(options: DashScopeProviderSettings = {}): DashSc
 
   return Object.assign(createChatModel, {
     languageModel: createChatModel,
+    embeddingModel: createEmbeddingModel,
+    rerankingModel: createRerankingModel,
     chatOptions: (chatOpts: DashScopeChatOptions) => ({
       providerOptions: { dashscope: chatOpts },
     }),

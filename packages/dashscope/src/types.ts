@@ -1,4 +1,4 @@
-import type { LanguageModelV3 } from "@ai-sdk/provider";
+import type { EmbeddingModelV3, LanguageModelV3, RerankingModelV3 } from "@ai-sdk/provider";
 import type { FetchFunction } from "@ai-sdk/provider-utils";
 import type { DashScopeResponsesTools } from "./tools";
 
@@ -88,6 +88,8 @@ export interface DashScopeResponsesNamespace {
 export interface DashScopeProvider {
   (modelId: string): LanguageModelV3;
   languageModel(modelId: string): LanguageModelV3;
+  embeddingModel(modelId: string): EmbeddingModelV3;
+  rerankingModel(modelId: string): RerankingModelV3;
   chatOptions: (options: DashScopeChatOptions) => {
     providerOptions: { dashscope: DashScopeChatOptions };
   };

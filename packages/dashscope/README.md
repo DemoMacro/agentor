@@ -10,6 +10,8 @@
 
 - **Chat Completions API** - Standard `/chat/completions` with function calling, streaming, and reasoning
 - **Responses API** - `/responses` endpoint with built-in tools support
+- **Embedding** - Text vectorization via OpenAI-compatible `/embeddings` endpoint
+- **Reranking** - Document reranking via `/reranks` endpoint
 - **Built-in Tools** - Web search, code interpreter, web extractor, file search, image search, MCP integration
 - **Thinking Mode** - Enable reasoning/thinking with configurable budget
 - **Multi-region** - Beijing, Singapore, US, Germany regions
@@ -242,6 +244,77 @@ const first = await generateText({
     },
   },
   prompt: "Follow up question...",
+});
+```
+
+## Embedding
+
+```typescript
+import { embed, embedMany } from "ai";
+
+// Single text embedding
+const { embedding, usage } = await embed({
+  model: dashscope.embeddingModel("text-embedding-v4"),
+  value: "The clothes quality is excellent",
+});
+
+console.log(embedding.length); // 1024 (default dimensions)
+
+// Batch embedding
+const { embeddings } = await embedMany({
+  model: dashscope.embeddingModel("text-embedding-v4"),
+  values: ["Hello world", "Machine learning is fascinating"],
+});
+```
+
+### Custom Dimensions
+
+```typescript
+const { embedding } = await embed({
+  model: dashscope.embeddingModel("text-embedding-v4"),
+  value: "Custom dimension embedding",
+  providerOptions: {
+    openaiCompatible: {
+      dimensions: 256,
+    },
+  },
+});
+
+console.log(embedding.length); // 256
+```
+
+## Reranking
+
+```typescript
+import { rerank } from "ai";
+
+const { ranking } = await rerank({
+  model: dashscope.rerankingModel("qwen3-rerank"),
+  query: "What is a reranking model?",
+  documents: [
+    "Reranking models sort candidate texts by relevance",
+    "Quantum computing is a frontier field",
+    "Pre-trained models brought advances to reranking",
+  ],
+});
+
+for (const item of ranking) {
+  console.log(`Index: ${item.originalIndex}, Score: ${item.score}`);
+}
+```
+
+### Top N Results
+
+```typescript
+const { ranking } = await rerank({
+  model: dashscope.rerankingModel("qwen3-rerank"),
+  query: "How to reset password?",
+  documents: [
+    "Go to Settings > Security > Change Password",
+    "Forgot your password?",
+    "Two-factor authentication is supported",
+  ],
+  topN: 2,
 });
 ```
 
