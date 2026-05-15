@@ -158,6 +158,98 @@ await generateText({
 });
 ```
 
+## Context Cache
+
+DashScope supports explicit caching to reduce cost and latency for repeated prefixes. Add `cacheControl` via `providerOptions` on messages or content parts:
+
+```typescript
+import { generateText } from "ai";
+
+// Cache a long system prompt (minimum 1024 tokens)
+const first = await generateText({
+  model: dashscope("qwen3.5-flash"),
+  messages: [
+    {
+      role: "system",
+      content: longText, // must be >= 1024 tokens
+      providerOptions: {
+        dashscope: { cacheControl: { type: "ephemeral" } },
+      },
+    },
+    { role: "user", content: "What does this code do?" },
+  ],
+});
+
+// Second request with same system prompt hits the cache
+const second = await generateText({
+  model: dashscope("qwen3.5-flash"),
+  messages: [
+    {
+      role: "system",
+      content: longText,
+      providerOptions: {
+        dashscope: { cacheControl: { type: "ephemeral" } },
+      },
+    },
+    { role: "user", content: "How can it be optimized?" },
+  ],
+});
+```
+
+Cache on user message content parts:
+
+```typescript
+await generateText({
+  model: dashscope("qwen3.5-flash"),
+  messages: [
+    {
+      role: "user",
+      content: [
+        {
+          type: "text",
+          text: longCode,
+          providerOptions: {
+            dashscope: { cacheControl: { type: "ephemeral" } },
+          },
+        },
+        { type: "text", text: "Explain this code." },
+      ],
+    },
+  ],
+});
+```
+
+> Implicit caching is enabled automatically for supported models — no configuration needed.
+
+## JSON Output
+
+### Structured Output with Schema
+
+Use `generateText` with `Output.object()` to generate typed JSON:
+
+```typescript
+import { generateText, Output } from "ai";
+import { z } from "zod/v4";
+
+const result = await generateText({
+  model: dashscope("qwen3.5-flash"),
+  prompt: "List 3 programming languages with their creators.",
+  output: Output.object({
+    schema: z.object({
+      languages: z.array(
+        z.object({
+          name: z.string(),
+          creator: z.string(),
+          year: z.number(),
+        }),
+      ),
+    }),
+  }),
+});
+
+console.log(result.output);
+```
+
 ## Completions (FIM)
 
 Use `completionModel()` for text/code completion via the `/completions` endpoint (Fill-In-the-Middle):

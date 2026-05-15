@@ -8,7 +8,6 @@ import type {
   LanguageModelV3Message,
   LanguageModelV3StreamPart,
   LanguageModelV3StreamResult,
-  LanguageModelV3TextPart,
   LanguageModelV3ToolCallPart,
   LanguageModelV3ToolChoice,
   LanguageModelV3ToolResultPart,
@@ -394,29 +393,49 @@ function convertToolResultOutput(output: LanguageModelV3ToolResultPart["output"]
   return JSON.stringify(output);
 }
 
+function extractCacheControl(
+  providerOptions?: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+  const ds = providerOptions?.dashscope as { cacheControl?: { type: string } } | undefined;
+  if (ds?.cacheControl) {
+    return { cache_control: { type: ds.cacheControl.type } };
+  }
+  return undefined;
+}
+
 function convertInput(prompt: Array<LanguageModelV3Message>): Array<Record<string, unknown>> {
   const input: Array<Record<string, unknown>> = [];
 
   for (const message of prompt) {
-    const { role, content } = message;
+    const { role, content, providerOptions: msgProviderOptions } = message;
 
     // system: content is always a string
     if (typeof content === "string") {
-      input.push({ role, content });
+      const cc = extractCacheControl(msgProviderOptions);
+      if (cc) {
+        input.push({
+          role,
+          content: [{ type: "input_text", text: content, ...cc }],
+        });
+      } else {
+        input.push({ role, content });
+      }
       continue;
     }
 
     // user / assistant / tool: content is an array of parts
-    const textParts: string[] = [];
+    const textParts: Array<{ text: string; cc?: Record<string, unknown> }> = [];
     const fileParts: Array<Record<string, unknown>> = [];
     const functionCalls: Array<Record<string, unknown>> = [];
     const functionOutputs: Array<Record<string, unknown>> = [];
 
     for (const part of content) {
       switch (part.type) {
-        case "text":
-          textParts.push((part as LanguageModelV3TextPart).text);
+        case "text": {
+          const cc = extractCacheControl(part.providerOptions);
+          textParts.push({ text: part.text, cc });
           break;
+        }
 
         case "file": {
           const filePart = convertFilePart(part as LanguageModelV3FilePart);
@@ -453,13 +472,13 @@ function convertInput(prompt: Array<LanguageModelV3Message>): Array<Record<strin
     }
 
     const messageParts = [
-      ...textParts.map((t) => ({ type: "text" as const, text: t })),
+      ...textParts.map((t) => ({ type: "input_text" as const, text: t.text, ...t.cc })),
       ...fileParts,
     ];
 
     if (messageParts.length > 0) {
-      if (messageParts.length === 1 && textParts.length === 1) {
-        input.push({ role, content: textParts[0] });
+      if (messageParts.length === 1 && textParts.length === 1 && !textParts[0].cc) {
+        input.push({ role, content: textParts[0].text });
       } else {
         input.push({ role, content: messageParts });
       }

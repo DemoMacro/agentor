@@ -122,15 +122,35 @@ const chatChunkSchema = z.object({
 
 // --- Message conversion ---
 
+function extractCacheControl(
+  providerOptions?: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+  const ds = providerOptions?.dashscope as { cacheControl?: { type: string } } | undefined;
+  if (ds?.cacheControl) {
+    return { cache_control: { type: ds.cacheControl.type } };
+  }
+  return undefined;
+}
+
 function convertMessages(
   prompt: LanguageModelV3CallOptions["prompt"],
 ): Array<Record<string, unknown>> {
   const messages: Array<Record<string, unknown>> = [];
 
-  for (const { role, content } of prompt) {
+  for (const message of prompt) {
+    const { role, content, providerOptions: msgProviderOptions } = message;
+
     switch (role) {
       case "system": {
-        messages.push({ role: "system", content: content as string });
+        const cc = extractCacheControl(msgProviderOptions);
+        if (cc) {
+          messages.push({
+            role: "system",
+            content: [{ type: "text", text: content as string, ...cc }],
+          });
+        } else {
+          messages.push({ role: "system", content: content as string });
+        }
         break;
       }
 
@@ -138,9 +158,11 @@ function convertMessages(
         const parts: Array<Record<string, unknown>> = [];
         for (const part of content) {
           switch (part.type) {
-            case "text":
-              parts.push({ type: "text", text: part.text });
+            case "text": {
+              const cc = extractCacheControl(part.providerOptions);
+              parts.push({ type: "text", text: part.text, ...cc });
               break;
+            }
             case "file": {
               if (part.mediaType.startsWith("image/")) {
                 const url =
@@ -154,11 +176,7 @@ function convertMessages(
           }
         }
 
-        if (parts.length === 1 && parts[0].type === "text") {
-          messages.push({ role: "user", content: parts[0].text });
-        } else {
-          messages.push({ role: "user", content: parts });
-        }
+        messages.push({ role: "user", content: parts });
         break;
       }
 
@@ -265,9 +283,29 @@ export class DashScopeChatLanguageModel implements LanguageModelV3 {
 
     warnings.push(...toolWarnings);
 
+    const messages = convertMessages(options.prompt);
+
+    // DashScope requires the word "json" in messages when using json_object format.
+    // Check if any message already contains "json", if not, inject a system message.
+    if (options.responseFormat?.type === "json") {
+      const hasJson = messages.some((m) => {
+        const c = m.content;
+        if (typeof c === "string") return c.toLowerCase().includes("json");
+        if (Array.isArray(c))
+          return c.some(
+            (p: Record<string, unknown>) =>
+              typeof p.text === "string" && p.text.toLowerCase().includes("json"),
+          );
+        return false;
+      });
+      if (!hasJson) {
+        messages.unshift({ role: "system", content: "Respond with JSON." });
+      }
+    }
+
     const args: Record<string, unknown> = {
       model: this.modelId,
-      messages: convertMessages(options.prompt),
+      messages,
       ...(options.maxOutputTokens != null && { max_tokens: options.maxOutputTokens }),
       ...(options.temperature != null && { temperature: options.temperature }),
       ...(options.topP != null && { top_p: options.topP }),
