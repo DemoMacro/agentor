@@ -1,3 +1,4 @@
+export * from "./completion";
 export * from "./embedding";
 export * from "./image";
 export * from "./rerank";

@@ -1,4 +1,5 @@
 import { DashScopeChatLanguageModel } from "./chat";
+import { DashScopeCompletionModel } from "./completion";
 import { DashScopeEmbeddingModel } from "./embedding";
 import { DashScopeImageModel } from "./image";
 import { DashScopeRerankingModel } from "./rerank";
@@ -58,6 +59,9 @@ export function createDashScope(options: DashScopeProviderSettings = {}): DashSc
   const createChatModel = (modelId: string) =>
     new DashScopeChatLanguageModel(modelId, { ...baseConfig, includeUsage });
 
+  const createCompletionModel = (modelId: string) =>
+    new DashScopeCompletionModel(modelId, { ...baseConfig, provider: "dashscope.completion" });
+
   const createEmbeddingModel = (modelId: string) =>
     new DashScopeEmbeddingModel(modelId, { ...baseConfig, includeUsage });
 
@@ -103,6 +107,7 @@ export function createDashScope(options: DashScopeProviderSettings = {}): DashSc
 
   return Object.assign(createChatModel, {
     languageModel: createChatModel,
+    completionModel: createCompletionModel,
     embeddingModel: createEmbeddingModel,
     rerankingModel: createRerankingModel,
     imageModel: createImageModel,

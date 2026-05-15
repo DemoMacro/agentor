@@ -80,6 +80,7 @@ export interface DashScopeResponsesNamespace {
 export interface DashScopeProvider {
   (modelId: string): LanguageModelV3;
   languageModel(modelId: string): LanguageModelV3;
+  completionModel(modelId: string): LanguageModelV3;
   embeddingModel(modelId: string): EmbeddingModelV3;
   rerankingModel(modelId: string): RerankingModelV3;
   imageModel(modelId: string): ImageModelV3;

@@ -8,9 +8,10 @@
 
 ## Features
 
-- **Chat Completions API** - Standard `/chat/completions` with function calling, streaming, and reasoning
-- **Responses API** - `/responses` endpoint with built-in tools support
-- **Embedding** - Text vectorization via OpenAI-compatible `/embeddings` endpoint
+- **Chat Completions** - `/chat/completions` with function calling, streaming, reasoning, and vision
+- **Completions (FIM)** - `/completions` for code completion with Qwen Coder models
+- **Responses** - `/responses` endpoint with built-in tools (web search, code interpreter, MCP, etc.)
+- **Embedding** - Text vectorization via `/embeddings` endpoint
 - **Reranking** - Document reranking via `/reranks` endpoint
 - **Image Generation** - Text-to-image via multimodal generation endpoint
 - **Video Generation** - Text-to-video and image-to-video with async polling
@@ -155,6 +156,20 @@ await generateText({
   },
   prompt: "Which is larger, 9.11 or 9.9?",
 });
+```
+
+## Completions (FIM)
+
+Use `completionModel()` for text/code completion via the `/completions` endpoint (Fill-In-the-Middle):
+
+```typescript
+const result = await generateText({
+  model: dashscope.completionModel("qwen2.5-coder-32b-instruct"),
+  prompt:
+    '<|fim_prefix|>def quick_sort(arr):\n    """Sort array using quicksort."""\n<|fim_suffix|>\n    return arr\n<|fim_middle|>',
+});
+
+console.log(result.text);
 ```
 
 ## Responses API
@@ -447,33 +462,47 @@ const dashscope = createDashScope({
 
 > For the complete and up-to-date model list, see [Alibaba Cloud Model Studio](https://help.aliyun.com/zh/model-studio/models).
 
-### Language Models (Chat)
+### Chat Completions (`/chat/completions`)
 
-| Model                 | Description                               |
-| --------------------- | ----------------------------------------- |
-| `qwen3.6-max-preview` | Flagship model with strongest reasoning   |
-| `qwen3.6-plus`        | Recommended, balanced capability and cost |
-| `qwen3.6-flash`       | Fastest, ultra-low cost                   |
-| `qwen3.5-plus`        | Enhanced reasoning model                  |
-| `qwen3.5-flash`       | Fast and efficient model                  |
-| `qwen3-coder-plus`    | Code-optimized model                      |
-| `qwen3-coder-flash`   | Fast code model                           |
-| `qwq-plus`            | Dedicated reasoning model                 |
-| `deepseek-v4-pro`     | DeepSeek V4 Pro                           |
-| `deepseek-v4-flash`   | DeepSeek V4 Flash                         |
-| `kimi-k2.6`           | Moonshot Kimi K2.6                        |
-| `glm-5.1`             | Zhipu GLM 5.1                             |
+| Series      | Models                                                                         |
+| ----------- | ------------------------------------------------------------------------------ |
+| Qwen Max    | `qwen3.6-max-preview`, `qwen3-max`, `qwen-max`, `qwen-max-latest`              |
+| Qwen Plus   | `qwen3.6-plus`, `qwen3.5-plus`, `qwen-plus`, `qwen-plus-latest`                |
+| Qwen Flash  | `qwen3.6-flash`, `qwen3.5-flash`, `qwen-flash`                                 |
+| Qwen Turbo  | `qwen-turbo`, `qwen-turbo-latest`                                              |
+| Qwen Coder  | `qwen3-coder-plus`, `qwen3-coder-flash`, `qwen-coder-plus`, `qwen-coder-turbo` |
+| Qwen Long   | `qwen-long`, `qwen-long-latest`                                                |
+| QwQ         | `qwq-plus`, `qwq-plus-latest`                                                  |
+| Qwen Math   | `qwen-math-plus`, `qwen-math-turbo`                                            |
+| Vision (VL) | `qwen3-vl-plus`, `qwen3-vl-flash`, `qwen-vl-max`, `qwen-vl-plus`               |
+| QVQ         | `qvq-max`, `qvq-plus`                                                          |
 
-### Embedding Models
+### Completions (`/completions`)
 
-| Model                          | Dimensions              | Description                         |
-| ------------------------------ | ----------------------- | ----------------------------------- |
-| `text-embedding-v4`            | 64-2048 (default 1024)  | Text embedding for search/RAG       |
-| `text-embedding-v3`            | 512-1024 (default 1024) | Legacy text embedding               |
-| `qwen3-vl-embedding`           | 256-2560 (default 2560) | Multimodal (text + image) embedding |
-| `tongyi-embedding-vision-plus` | 64-1152 (default 1152)  | Cross-modal search embedding        |
+| Model                        | Description             |
+| ---------------------------- | ----------------------- |
+| `qwen2.5-coder-32b-instruct` | Qwen2.5 Coder 32B       |
+| `qwen2.5-coder-14b-instruct` | Qwen2.5 Coder 14B       |
+| `qwen2.5-coder-7b-instruct`  | Qwen2.5 Coder 7B        |
+| `qwen-coder-turbo-latest`    | Qwen Coder Turbo        |
+| `qwen-coder-turbo`           | Qwen Coder Turbo (base) |
 
-### Reranking Models
+### Responses (`/responses`)
+
+`qwen3-max`, `qwen3.6-plus`, `qwen3.6-flash`, `qwen3.5-plus`, `qwen3.5-flash`, `qwen-plus`, `qwen-flash`, `qwen3-coder-plus`, `qwen3-coder-flash`
+
+### Embedding (`/embeddings`)
+
+| Model               | Dimensions             | Languages              |
+| ------------------- | ---------------------- | ---------------------- |
+| `text-embedding-v4` | 64-2048 (default 1024) | 100+ languages         |
+| `text-embedding-v3` | 64-1024 (default 1024) | 50+ languages          |
+| `text-embedding-v2` | 1536                   | Chinese, English, etc. |
+| `text-embedding-v1` | 1536                   | Chinese, English, etc. |
+
+> Multimodal embedding models (`qwen3-vl-embedding`, `tongyi-embedding-vision-*`) do not support the OpenAI-compatible interface.
+
+### Reranking (`/reranks`)
 
 | Model             | Description                             |
 | ----------------- | --------------------------------------- |
@@ -481,7 +510,7 @@ const dashscope = createDashScope({
 | `qwen3-vl-rerank` | Multimodal reranking (text/image/video) |
 | `gte-rerank-v2`   | Semantic text reranking                 |
 
-### Image Models
+### Image Generation
 
 | Model                | Description                                  |
 | -------------------- | -------------------------------------------- |
@@ -492,7 +521,7 @@ const dashscope = createDashScope({
 | `qwen-image-plus`    | Enhanced image generation                    |
 | `z-image-turbo`      | Fast image generation                        |
 
-### Video Models
+### Video Generation
 
 | Model              | Mode | Description                           |
 | ------------------ | ---- | ------------------------------------- |
@@ -503,7 +532,7 @@ const dashscope = createDashScope({
 | `wan2.6-i2v`       | I2V  | Image-to-video with audio             |
 | `wan2.6-i2v-flash` | I2V  | Fast image-to-video                   |
 
-### Speech Models (TTS)
+### Speech Synthesis (TTS)
 
 | Model                      | Description                        |
 | -------------------------- | ---------------------------------- |
@@ -513,7 +542,7 @@ const dashscope = createDashScope({
 | `cosyvoice-v3-flash`       | V3 fast synthesis                  |
 | `qwen3-tts-flash-realtime` | Qwen TTS with 17 human-like voices |
 
-### Transcription Models (STT)
+### Transcription (STT)
 
 | Model                       | Mode  | Description                    |
 | --------------------------- | ----- | ------------------------------ |
