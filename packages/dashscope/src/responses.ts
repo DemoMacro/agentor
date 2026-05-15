@@ -568,6 +568,8 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV3 {
       request: { body },
       response: {
         id: response.id ?? undefined,
+        timestamp: response.created_at ? new Date(response.created_at * 1000) : new Date(),
+        modelId: response.model ?? undefined,
         headers: responseHeaders,
       },
       warnings,
@@ -706,6 +708,7 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV3 {
           },
         }),
       ),
+      request: { body },
       response: { headers: responseHeaders },
     };
   }

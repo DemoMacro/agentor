@@ -88,6 +88,7 @@ export class DashScopeRerankingModel implements RerankingModelV3 {
       warnings,
       response: {
         id: response.id ?? undefined,
+        timestamp: new Date(),
         modelId: response.model ?? undefined,
         headers: responseHeaders,
       },

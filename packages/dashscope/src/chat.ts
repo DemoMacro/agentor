@@ -341,7 +341,7 @@ export class DashScopeChatLanguageModel implements LanguageModelV3 {
       content,
       finishReason,
       usage: convertOpenAICompatibleChatUsage(response.usage),
-      request: { body: JSON.stringify(args) },
+      request: { body: args },
       response: {
         ...getResponseMetadata(response),
         headers: responseHeaders,
@@ -547,7 +547,7 @@ export class DashScopeChatLanguageModel implements LanguageModelV3 {
           },
         }),
       ),
-      request: { body: JSON.stringify(body) },
+      request: { body },
       response: { headers: responseHeaders },
     };
   }

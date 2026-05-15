@@ -217,7 +217,7 @@ export class DashScopeTranscriptionModel implements TranscriptionModelV3 {
       language: undefined,
       durationInSeconds: undefined,
       warnings,
-      request: { body },
+      request: { body: JSON.stringify(body) },
       response: {
         timestamp: new Date(),
         modelId: this.modelId,
@@ -248,17 +248,19 @@ export class DashScopeTranscriptionModel implements TranscriptionModelV3 {
       parameters.language_hints = dsOptions.languageHints;
     }
 
+    const body = {
+      model: this.modelId,
+      input: { file_url: audioUrl },
+      ...(Object.keys(parameters).length > 0 && { parameters }),
+    };
+
     // Step 1: Create task
     const { value: createResponse } = await postJsonToApi({
       url: `${this.config.baseURL}/api/v1/services/audio/asr/transcription`,
       headers: combineHeaders(this.config.headers(), options.headers, {
         "X-DashScope-Async": "enable",
       }),
-      body: {
-        model: this.modelId,
-        input: { file_url: audioUrl },
-        ...(Object.keys(parameters).length > 0 && { parameters }),
-      },
+      body,
       successfulResponseHandler: createJsonResponseHandler(createTaskSchema),
       failedResponseHandler: nativeFailedHandler,
       abortSignal: options.abortSignal,
@@ -362,6 +364,7 @@ export class DashScopeTranscriptionModel implements TranscriptionModelV3 {
           language: undefined,
           durationInSeconds: undefined,
           warnings,
+          request: { body: JSON.stringify(body) },
           response: {
             timestamp: new Date(),
             modelId: this.modelId,
