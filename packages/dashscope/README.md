@@ -17,7 +17,7 @@
 - **Video Generation** - Text-to-video and image-to-video with async polling
 - **Speech Synthesis** - Text-to-speech for CosyVoice and Qwen-TTS models
 - **Transcription** - Speech-to-text for short and long audio
-- **Built-in Tools** - Web search, code interpreter, web extractor, file search, image search, MCP integration
+- **Built-in Tools** - Web search, code interpreter, web extractor, file search, web search image, image search, MCP integration
 - **Thinking Mode** - Enable reasoning/thinking with configurable budget
 - **Multi-region** - Beijing, Singapore, US, Germany regions
 - **TypeScript-First** - Full type safety with comprehensive TypeScript support
@@ -123,6 +123,8 @@ await generateText({
   prompt: "What are the latest tech news today?",
 });
 ```
+
+Options: `enableSearch`, `searchStrategy` (`"enable"` | `"enable_with_history"` | `"agent_max"`).
 
 ### Code Interpreter
 
@@ -292,6 +294,8 @@ const result = await generateText({
 });
 ```
 
+Options: `forcedSearch`, `searchStrategy` (`"enable"` | `"enable_with_history"`).
+
 #### Code Interpreter
 
 ```typescript
@@ -311,6 +315,8 @@ const result = await generateText({
   prompt: "Extract the main content from https://example.com",
 });
 ```
+
+> Can be used together with `webSearch` for enhanced results.
 
 #### File Search
 
@@ -342,12 +348,29 @@ const result = await generateText({
 });
 ```
 
+Options: `serverProtocol`, `serverLabel`, `serverUrl`, `serverDescription`, `headers`.
+
+#### Web Search Image
+
+Text-to-image search. Search images based on text description.
+
+#### Image Search
+
+Image-to-image search. Search similar images based on an input image.
+
 ### Multi-turn Conversation
+
+Options via `providerOptions.dashscope`: `previousResponseId`, `enableThinking`, `reasoning` (effort levels), `conversation`, `instructions`, `includeUsage`.
 
 Use `previousResponseId` for multi-turn conversations:
 
 ```typescript
 const first = await generateText({
+  model: dashscope.responses("qwen3.5-flash"),
+  prompt: "Tell me about TypeScript.",
+});
+
+const second = await generateText({
   model: dashscope.responses("qwen3.5-flash"),
   providerOptions: {
     dashscope: {
@@ -472,7 +495,7 @@ Use a model ID containing `-i2v` for image-to-video mode:
 
 ```typescript
 const { videos } = await generateVideo({
-  model: dashscope.videoModel("wan2.6-i2v-turbo"),
+  model: dashscope.videoModel("wan2.7-i2v"),
   prompt: "The cat stretches and walks away",
   providerOptions: {
     dashscope: {
@@ -552,7 +575,7 @@ const dashscope = createDashScope({
 
 ## Available Models
 
-> For the complete and up-to-date model list, see [Alibaba Cloud Model Studio](https://help.aliyun.com/zh/model-studio/models).
+> For the complete and up-to-date model list, see [Alibaba Cloud Model Studio](https://help.aliyun.com/en/model-studio/models).
 
 ### Chat Completions (`/chat/completions`)
 
