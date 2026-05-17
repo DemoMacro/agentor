@@ -8,6 +8,7 @@
 ## Packages
 
 - **[@agentor/dashscope](./packages/dashscope/README.md)** - Alibaba Cloud DashScope (Bailian) API provider
+- **[@agentor/chat-wecom](./packages/chat-wecom/README.md)** - WeChat Work (企业微信) Chat SDK adapter
 
 ## Quick Start
 
@@ -35,6 +36,31 @@ const result = await generateText({
 });
 
 console.log(result.text);
+```
+
+### Chat WeCom
+
+```bash
+# Install with npm
+$ npm install @agentor/chat-wecom
+
+# Install with yarn
+$ yarn add @agentor/chat-wecom
+
+# Install with pnpm
+$ pnpm add @agentor/chat-wecom
+```
+
+```typescript
+import { createWeComWebhookAdapter } from "@agentor/chat-wecom";
+
+// Send message to group via webhook
+const adapter = createWeComWebhookAdapter({
+  key: process.env.WECOM_WEBHOOK_KEY!,
+});
+
+const threadId = adapter.encodeThreadId({ key: process.env.WECOM_WEBHOOK_KEY! });
+const result = await adapter.postMessage(threadId, "Hello from Agentor!");
 ```
 
 ## Development
@@ -124,6 +150,7 @@ We welcome contributions! Here's how to get started:
 
 - 📫 [Report Issues](https://github.com/DemoMacro/agentor/issues)
 - 📚 [DashScope Documentation](./packages/dashscope/README.md)
+- 📚 [Chat WeCom Documentation](./packages/chat-wecom/README.md)
 
 ## License
 

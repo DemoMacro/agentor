@@ -1,6 +1,6 @@
 {
   "name": "@agentor/chat-wecom",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "WeChat Work (企业微信) integration toolkit with Webhook, Bot, and App support",
   "keywords": [
     "bot",

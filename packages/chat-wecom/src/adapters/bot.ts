@@ -83,7 +83,7 @@ export class WeComBotAdapter implements Adapter<WeComBotThreadId, BotRawMessage>
         this.responseUrls.set(threadId, body.response_url);
       }
 
-      void this.chat.processMessage(this, threadId, async () => this.parseMessage(body, reqId));
+      void this.chat.processMessage(this, threadId, async () => this.parseMessage(body));
     });
 
     await this.wsManager.connect();
@@ -221,7 +221,7 @@ export class WeComBotAdapter implements Adapter<WeComBotThreadId, BotRawMessage>
 
   async startTyping(_threadId: string, _status?: string): Promise<void> {}
 
-  parseMessage(raw: WsBotCallbackBody, _reqId?: string): Message<BotRawMessage> {
+  parseMessage(raw: WsBotCallbackBody): Message<BotRawMessage> {
     const chatId = raw.chatid ?? raw.from.userid;
     return new Message({
       id: raw.msgid,
