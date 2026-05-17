@@ -1,8 +1,8 @@
 // 智能机器人 - WebSocket 长连接模式测试
 // 直连企业微信 WebSocket 服务，测试消息收发
 
-import { Message, type Adapter } from "chat";
-import { createWeComBotAdapter } from "../src";
+import { Message, type Adapter, type FileUpload } from "chat";
+import { createWeComBotAdapter, fetchEncryptedMedia } from "../src";
 
 const BOT_WS_BOT_ID = process.env.WECOM_BOT_WS_BOT_ID;
 const BOT_WS_SECRET = process.env.WECOM_BOT_WS_SECRET;
@@ -29,36 +29,6 @@ async function threadIdCodec() {
   console.log("Channel ID:", adapter.channelIdFromThreadId(encoded));
 }
 
-// --- 消息解析 ---
-
-async function parseMessage() {
-  console.log("\n=== Parse Message ===");
-
-  const adapter = createWeComBotAdapter({
-    mode: "websocket",
-    botId: BOT_WS_BOT_ID ?? "test-bot-id",
-    secret: BOT_WS_SECRET ?? "test-secret",
-  });
-
-  const chatId = BOT_CHAT_ID ?? "test-chat-id";
-  const rawMessage = {
-    msgid: "ws-msg-001",
-    aibotid: BOT_WS_BOT_ID ?? "test-bot-id",
-    chatid: chatId,
-    chattype: "single" as const,
-    from: { userid: "user-ws-001", corpid: "corp-001" },
-    create_time: Date.now(),
-    msgtype: "text" as const,
-    text: { content: "Hello from WebSocket!" },
-  };
-
-  const message = adapter.parseMessage(rawMessage);
-  console.log("ID:", message.id);
-  console.log("Text:", message.text);
-  console.log("Thread ID:", message.threadId);
-  console.log("Author:", message.author);
-}
-
 // --- WebSocket 连接测试 ---
 
 async function wsConnectTest() {
@@ -82,10 +52,63 @@ async function wsConnectTest() {
       factory: () => Promise<Message<unknown>>,
     ) => {
       const message = await factory();
-      console.log(`\n[Message] ${message.author.userName}: ${message.text}`);
+      const attachmentInfo =
+        message.attachments.length > 0
+          ? ` [${message.attachments.map((a) => a.type).join(", ")}]`
+          : "";
+      console.log(`\n[Message] ${message.author.userName}: ${message.text}${attachmentInfo}`);
       console.log(`  Thread: ${message.threadId}`);
 
-      const result = await adapter.postMessage(threadId, message.text);
+      // 解密附件并通过 postMessage 发回
+      const mediaFiles: FileUpload[] = [];
+      const parts: string[] = [];
+      for (const attachment of message.attachments) {
+        const aeskey = attachment.fetchMetadata?.aeskey as string | undefined;
+        if (aeskey && attachment.url) {
+          try {
+            const { data: decrypted, filename: originalName } = await fetchEncryptedMedia(
+              attachment.url,
+              aeskey,
+            );
+            console.log(
+              `  ${attachment.type}: decrypted ${decrypted.length} bytes${originalName ? ` (${originalName})` : ""}`,
+            );
+            const extMap: Record<string, string> = {
+              image: ".jpg",
+              video: ".mp4",
+              audio: ".amr",
+            };
+            mediaFiles.push({
+              data: decrypted,
+              filename:
+                attachment.name ?? originalName ?? `echo-${attachment.type}${extMap[attachment.type] ?? ""}`,
+              mimeType:
+                attachment.type === "image"
+                  ? "image/jpeg"
+                  : attachment.type === "video"
+                    ? "video/mp4"
+                    : attachment.type === "audio"
+                      ? "audio/amr"
+                      : undefined,
+            });
+            parts.push(
+              `**${attachment.type}**: ${decrypted.length} bytes${originalName ? ` (${originalName})` : ""}\nurl: ${attachment.url}\naeskey: ${aeskey}`,
+            );
+          } catch {
+            parts.push(
+              `**${attachment.type}**: decrypt failed\nurl: ${attachment.url}\naeskey: ${aeskey}`,
+            );
+          }
+        } else {
+          parts.push(`**${attachment.type}**: ${attachment.url ?? attachment.name ?? "unknown"}`);
+        }
+      }
+
+      const replyText = message.attachments.length > 0 ? parts.join("\n\n") : message.text;
+      const result = await adapter.postMessage(
+        threadId,
+        mediaFiles.length > 0 ? { raw: replyText, files: mediaFiles } : replyText,
+      );
       console.log(`  Reply sent, ID: ${result.id}`);
     },
   } as never);
@@ -105,7 +128,6 @@ async function wsConnectTest() {
 async function main() {
   try {
     await threadIdCodec();
-    await parseMessage();
     await wsConnectTest();
   } catch (error) {
     console.error("Error:", error);

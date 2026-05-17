@@ -53,6 +53,45 @@ export async function wecomRequest<T extends WeComBaseResponse>(
   return data;
 }
 
+interface WeComUploadOptions {
+  url: string;
+  params?: Record<string, string>;
+  fieldName: string;
+  fileName: string;
+  data: Buffer | ArrayBuffer | Blob;
+  fetch?: typeof globalThis.fetch;
+}
+
+export async function wecomUpload<T extends WeComBaseResponse>(
+  options: WeComUploadOptions,
+): Promise<T> {
+  const { url, params, fieldName, fileName, data, fetch: customFetch } = options;
+
+  const fullUrl = new URL(url, WECOM_API_BASE);
+  if (params) {
+    for (const [key, value] of Object.entries(params)) {
+      fullUrl.searchParams.set(key, value);
+    }
+  }
+
+  const formData = new FormData();
+  const blob = data instanceof Blob ? data : new Blob([data as ArrayBuffer]);
+  formData.append(fieldName, blob, fileName);
+
+  const response = await (customFetch ?? globalThis.fetch)(fullUrl.toString(), {
+    method: "POST",
+    body: formData,
+  });
+
+  const result = (await response.json()) as T;
+
+  if (result.errcode !== 0) {
+    throw new WeComError(result.errcode, result.errmsg);
+  }
+
+  return result;
+}
+
 // 企业微信回调使用 XML 格式，支持 <![CDATA[...]]> 和纯文本两种节点格式
 export function extractXmlField(xml: string, field: string): string | null {
   const match =

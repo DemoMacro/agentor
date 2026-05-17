@@ -1,7 +1,7 @@
 // https://developer.work.weixin.qq.com/document/path/101463
 // 智能机器人 WebSocket 长连接管理器
 
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import type { WeComBotWebSocketConfig, WsBotCallbackBody, WsFrame } from "../types";
 
 const DEFAULT_WS_URL = "wss://openws.work.weixin.qq.com";
@@ -32,6 +32,10 @@ export class BotWebSocketManager {
 
   private messageHandler: MessageHandler | null = null;
   private eventHandler: EventHandler | null = null;
+  private readonly pendingRequests = new Map<
+    string,
+    { resolve: (frame: WsFrame) => void; reject: (err: Error) => void }
+  >();
 
   constructor(config: WeComBotWebSocketConfig) {
     this.config = config;
@@ -63,6 +67,18 @@ export class BotWebSocketManager {
       ws.addEventListener("message", (event: MessageEvent) => {
         const frame: WsFrame = JSON.parse(event.data as string);
         const reqId = frame.headers.req_id;
+
+        // 请求-响应模式: 上传等需要等待响应的操作
+        const pending = this.pendingRequests.get(reqId);
+        if (pending) {
+          this.pendingRequests.delete(reqId);
+          if (frame.errcode === 0) {
+            pending.resolve(frame);
+          } else {
+            pending.reject(new Error(`Request failed: ${frame.errcode} ${frame.errmsg}`));
+          }
+          return;
+        }
 
         // 认证响应
         if (reqId.startsWith("aibot_subscribe_")) {
@@ -109,6 +125,10 @@ export class BotWebSocketManager {
 
       ws.addEventListener("close", () => {
         this.stopHeartbeat();
+        for (const [id, pending] of this.pendingRequests) {
+          this.pendingRequests.delete(id);
+          pending.reject(new Error("WebSocket closed"));
+        }
         if (!this.isManualClose) {
           this.scheduleReconnect();
         }
@@ -128,13 +148,75 @@ export class BotWebSocketManager {
     this.sendFrame("aibot_respond_msg", { msgtype, [msgtype]: content }, reqId);
   }
 
+  // https://developer.work.weixin.qq.com/document/path/101463
+  // 分块上传: init → chunk(s) → finish → media_id
+  async uploadMedia(type: string, filename: string, buffer: Buffer): Promise<string> {
+    const md5 = createHash("md5").update(buffer).digest("hex");
+    const CHUNK_SIZE = 512 * 1024;
+    const totalSize = buffer.length;
+    const totalChunks = Math.ceil(totalSize / CHUNK_SIZE);
+
+    const initFrame = await this.sendAndReceive("aibot_upload_media_init", {
+      type,
+      filename,
+      total_size: totalSize,
+      total_chunks: totalChunks,
+      md5,
+    });
+    const { upload_id } = initFrame.body as { upload_id: string };
+
+    for (let i = 0; i < totalChunks; i++) {
+      const chunk = buffer.subarray(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+      await this.sendAndReceive("aibot_upload_media_chunk", {
+        upload_id,
+        chunk_index: i,
+        base64_data: chunk.toString("base64"),
+      });
+    }
+
+    const finishFrame = await this.sendAndReceive("aibot_upload_media_finish", { upload_id });
+    const result = finishFrame.body as { media_id: string };
+    return result.media_id;
+  }
+
+  private sendAndReceive(cmd: string, body: unknown): Promise<WsFrame> {
+    return new Promise((resolve, reject) => {
+      if (!this.ws) {
+        reject(new Error("WebSocket not connected"));
+        return;
+      }
+      const reqId = generateReqId(cmd);
+      const timer = setTimeout(() => {
+        this.pendingRequests.delete(reqId);
+        reject(new Error(`${cmd} timed out`));
+      }, 60_000);
+      this.pendingRequests.set(reqId, {
+        resolve: (frame) => {
+          clearTimeout(timer);
+          resolve(frame);
+        },
+        reject: (err) => {
+          clearTimeout(timer);
+          reject(err);
+        },
+      });
+      this.sendFrame(cmd, body, reqId);
+    });
+  }
+
   // https://developer.work.weixin.qq.com/document/path/101138
   sendMessage(chatId: string, msgtype: string, content: unknown): void {
-    this.sendFrame("aibot_send_msg", {
+    const body: Record<string, unknown> = {
       chatid: chatId,
       msgtype,
-      [msgtype]: content,
-    });
+    };
+    // template_card 的结构是 { template_card: {...} }，其他是 { markdown: { content } }
+    if (msgtype === "template_card") {
+      body.template_card = content;
+    } else {
+      body[msgtype] = content;
+    }
+    this.sendFrame("aibot_send_msg", body);
   }
 
   private sendFrame(cmd: string, body: unknown, reqId?: string): void {

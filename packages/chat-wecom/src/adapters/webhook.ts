@@ -14,9 +14,13 @@ import {
   type ThreadInfo,
   type WebhookOptions,
 } from "chat";
+import { extractCard, extractFiles, toBufferSync } from "@chat-adapter/shared";
+import { cardToTemplateCard } from "../card";
 import { WeComFormatConverter } from "../format";
-import type { WeComBaseResponse, WeComWebhookConfig, WeComWebhookMessage } from "../types";
+import { inferMediaType, uploadWebhookMedia } from "../media";
+import type { WeComBaseResponse, WeComTemplateCard, WeComWebhookConfig } from "../types";
 import { wecomRequest } from "../utils";
+import { createHash } from "node:crypto";
 
 export interface WeComWebhookThreadId {
   key: string;
@@ -56,20 +60,92 @@ export class WeComWebhookAdapter implements Adapter<WeComWebhookThreadId, WeComB
     message: AdapterPostableMessage,
   ): Promise<RawMessage<WeComBaseResponse>> {
     const { key } = this.decodeThreadId(threadId);
+
+    // 卡片 → template_card
+    const card = extractCard(message);
+    if (card) {
+      const templateCard = cardToTemplateCard(card);
+      return this.sendTemplateCard(key, templateCard);
+    }
+
+    // 文件 → 媒体消息
+    const files = extractFiles(message);
+    if (files.length > 0) {
+      const file = files[0];
+      const mediaType = inferMediaType(file.filename, file.mimeType);
+
+      if (mediaType === "image") {
+        const buffer = toBufferSync(file.data, { platform: "wecom" as never });
+        if (buffer) return this.sendImage(key, buffer);
+      }
+
+      const mediaId = await uploadWebhookMedia(key, file, this.config.fetch);
+      // webhook 仅支持发送 voice 和 file，其余统一用 file
+      const sendType = mediaType === "voice" ? "voice" : "file";
+      return this.sendMedia(key, sendType, mediaId);
+    }
+
+    // 默认: markdown
     const text = this.formatConverter.renderPostable(message);
+    return this.sendMarkdown(key, text);
+  }
+
+  private async sendMarkdown(key: string, content: string): Promise<RawMessage<WeComBaseResponse>> {
+    const result = await wecomRequest<WeComBaseResponse>({
+      method: "POST",
+      url: "/cgi-bin/webhook/send",
+      params: { key },
+      body: { msgtype: "markdown", markdown: { content } },
+      fetch: this.config.fetch,
+    });
+    return { id: String(Date.now()), raw: result, threadId: `wecom-webhook:${key}` };
+  }
+
+  private async sendTemplateCard(
+    key: string,
+    templateCard: WeComTemplateCard,
+  ): Promise<RawMessage<WeComBaseResponse>> {
+    const result = await wecomRequest<WeComBaseResponse>({
+      method: "POST",
+      url: "/cgi-bin/webhook/send",
+      params: { key },
+      body: { msgtype: "template_card", template_card: templateCard },
+      fetch: this.config.fetch,
+    });
+    return { id: String(Date.now()), raw: result, threadId: `wecom-webhook:${key}` };
+  }
+
+  private async sendImage(key: string, buffer: Buffer): Promise<RawMessage<WeComBaseResponse>> {
+    const base64 = buffer.toString("base64");
+    const md5 = createHash("md5").update(buffer).digest("hex");
+    const result = await wecomRequest<WeComBaseResponse>({
+      method: "POST",
+      url: "/cgi-bin/webhook/send",
+      params: { key },
+      body: { msgtype: "image", image: { base64, md5 } },
+      fetch: this.config.fetch,
+    });
+    return { id: String(Date.now()), raw: result, threadId: `wecom-webhook:${key}` };
+  }
+
+  private async sendMedia(
+    key: string,
+    mediaType: "voice" | "file",
+    mediaId: string,
+  ): Promise<RawMessage<WeComBaseResponse>> {
+    const body =
+      mediaType === "voice"
+        ? { msgtype: "voice", voice: { media_id: mediaId } }
+        : { msgtype: "file", file: { media_id: mediaId } };
 
     const result = await wecomRequest<WeComBaseResponse>({
       method: "POST",
       url: "/cgi-bin/webhook/send",
       params: { key },
-      body: {
-        msgtype: "markdown",
-        markdown: { content: text },
-      } as WeComWebhookMessage,
+      body,
       fetch: this.config.fetch,
     });
-
-    return { id: String(Date.now()), raw: result, threadId };
+    return { id: String(Date.now()), raw: result, threadId: `wecom-webhook:${key}` };
   }
 
   async editMessage(
@@ -103,9 +179,7 @@ export class WeComWebhookAdapter implements Adapter<WeComWebhookThreadId, WeComB
     throw new NotImplementedError("wecom-webhook: removeReaction not supported");
   }
 
-  async startTyping(_threadId: string, _status?: string): Promise<void> {
-    // Webhook 不支持输入状态指示
-  }
+  async startTyping(_threadId: string, _status?: string): Promise<void> {}
 
   parseMessage(raw: WeComBaseResponse): Message<WeComBaseResponse> {
     return new Message({

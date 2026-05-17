@@ -6,6 +6,7 @@ import {
   NotImplementedError,
   type Adapter,
   type AdapterPostableMessage,
+  type Attachment,
   type ChatInstance,
   type FetchOptions,
   type FetchResult,
@@ -14,8 +15,11 @@ import {
   type ThreadInfo,
   type WebhookOptions,
 } from "chat";
+import { extractCard, extractFiles } from "@chat-adapter/shared";
+import { cardToTemplateCard } from "../card";
 import { decryptCallback, encryptReply, verifyUrl } from "../crypto";
 import { WeComFormatConverter } from "../format";
+import { inferMediaType } from "../media";
 import { BotWebSocketManager } from "./bot-ws";
 import type {
   WeComBaseResponse,
@@ -44,6 +48,7 @@ export class WeComBotAdapter implements Adapter<WeComBotThreadId, BotRawMessage>
   private readonly formatConverter = new WeComFormatConverter();
   private wsManager: BotWebSocketManager | null = null;
   private readonly responseUrls = new Map<string, string>();
+  private readonly reqIds = new Map<string, string>();
 
   constructor(private readonly config: WeComBotConfig) {
     this.userName = config.userName ?? "WeCom Bot";
@@ -73,11 +78,13 @@ export class WeComBotAdapter implements Adapter<WeComBotThreadId, BotRawMessage>
     if (isCallbackConfig(this.config)) return;
 
     this.wsManager = new BotWebSocketManager(this.config);
-    this.wsManager.onMessage((body) => {
+    this.wsManager.onMessage((body, reqId) => {
       if (!this.chat) return;
       const threadId = this.encodeThreadId({
         chatId: body.chatid ?? body.from.userid,
       });
+
+      this.reqIds.set(threadId, reqId);
 
       if (body.response_url) {
         this.responseUrls.set(threadId, body.response_url);
@@ -123,7 +130,7 @@ export class WeComBotAdapter implements Adapter<WeComBotThreadId, BotRawMessage>
 
     const callbackBody = JSON.parse(decrypted) as WsBotCallbackBody;
 
-    if (this.chat && callbackBody.msgtype === "text") {
+    if (this.chat && callbackBody.msgtype !== "event") {
       const chatId = callbackBody.chatid ?? callbackBody.from.userid;
       const threadId = this.encodeThreadId({ chatId });
 
@@ -150,16 +157,37 @@ export class WeComBotAdapter implements Adapter<WeComBotThreadId, BotRawMessage>
     });
   }
 
-  // 回调模式通过 response_url 回复，WS 模式通过 aibot_send_msg 发送
+  // 回调模式通过 response_url 回复，WS 模式通过 aibot_send_msg 或 aibot_respond_msg 发送
   async postMessage(
     threadId: string,
     message: AdapterPostableMessage,
   ): Promise<RawMessage<BotRawMessage>> {
+    const card = extractCard(message);
     const text = this.formatConverter.renderPostable(message);
 
     if (this.wsManager) {
       const { chatId } = this.decodeThreadId(threadId);
-      this.wsManager.sendMessage(chatId, "markdown", { content: text });
+
+      // WS 模式: 分块上传媒体文件，通过 respond_msg 回复
+      const files = extractFiles(message);
+      const reqId = this.reqIds.get(threadId);
+      if (files.length > 0 && reqId) {
+        const file = files[0];
+        const buffer = Buffer.isBuffer(file.data)
+          ? file.data
+          : Buffer.from(file.data as ArrayBuffer);
+        const mediaType = inferMediaType(file.filename, file.mimeType);
+        const mediaId = await this.wsManager.uploadMedia(mediaType, file.filename, buffer);
+        this.wsManager.respondMessage(reqId, mediaType, { media_id: mediaId });
+        return { id: String(Date.now()), raw: {} as BotRawMessage, threadId };
+      }
+
+      if (card) {
+        const templateCard = cardToTemplateCard(card);
+        this.wsManager.sendMessage(chatId, "template_card", templateCard);
+      } else {
+        this.wsManager.sendMessage(chatId, "markdown", { content: text });
+      }
       return {
         id: String(Date.now()),
         raw: {} as BotRawMessage,
@@ -167,17 +195,21 @@ export class WeComBotAdapter implements Adapter<WeComBotThreadId, BotRawMessage>
       };
     }
 
-    // 回调模式：使用存储的 response_url 回复
+    // 回调模式：卡片或 markdown
     const responseUrl = this.responseUrls.get(threadId);
     if (!responseUrl) {
       throw new Error("wecom-bot: no response_url available for this thread");
     }
 
     const fetchFn = (this.config as WeComBotCallbackConfig).fetch ?? globalThis.fetch;
+    const replyBody = card
+      ? { msgtype: "template_card", template_card: cardToTemplateCard(card) }
+      : { msgtype: "markdown", markdown: { content: text } };
+
     const response = await fetchFn(responseUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ msgtype: "markdown", markdown: { content: text } }),
+      body: JSON.stringify(replyBody),
     });
 
     const result = (await response.json()) as WeComBaseResponse;
@@ -237,7 +269,7 @@ export class WeComBotAdapter implements Adapter<WeComBotThreadId, BotRawMessage>
         isMe: false,
       },
       metadata: { dateSent: new Date(), edited: false },
-      attachments: [],
+      attachments: parseBotAttachments(raw),
     });
   }
 
@@ -248,6 +280,41 @@ export class WeComBotAdapter implements Adapter<WeComBotThreadId, BotRawMessage>
   async disconnect(): Promise<void> {
     this.wsManager?.disconnect();
   }
+}
+
+function parseBotAttachments(raw: WsBotCallbackBody): Attachment[] {
+  const attachments: Attachment[] = [];
+  if (raw.image) {
+    attachments.push({
+      type: "image",
+      url: raw.image.url,
+      fetchMetadata: { aeskey: raw.image.aeskey },
+    });
+  }
+  if (raw.voice) {
+    attachments.push({
+      type: "audio",
+      url: raw.voice.url,
+      fetchMetadata: { aeskey: raw.voice.aeskey },
+    });
+  }
+  if (raw.file) {
+    attachments.push({
+      type: "file",
+      url: raw.file.url,
+      name: raw.file.filename,
+      size: raw.file.filesize,
+      fetchMetadata: { aeskey: raw.file.aeskey },
+    });
+  }
+  if (raw.video) {
+    attachments.push({
+      type: "video",
+      url: raw.video.url,
+      fetchMetadata: { aeskey: raw.video.aeskey },
+    });
+  }
+  return attachments;
 }
 
 export function createWeComBotAdapter(config: WeComBotConfig) {

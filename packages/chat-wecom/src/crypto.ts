@@ -110,6 +110,14 @@ export async function decrypt(
 
 // --- High-level helpers ---
 
+export function decryptMedia(data: Buffer, aeskey: string): Buffer {
+  const key = Buffer.from(aeskey, "base64");
+  const iv = key.subarray(0, 16);
+  const decipher = createDecipheriv("aes-256-cbc", key, iv);
+  decipher.setAutoPadding(false);
+  return pkcs7Unpad(Buffer.concat([decipher.update(data), decipher.final()]));
+}
+
 export async function verifyUrl(
   token: string,
   encodingAESKey: string,

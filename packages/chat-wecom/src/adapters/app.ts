@@ -7,6 +7,7 @@ import {
   NotImplementedError,
   type Adapter,
   type AdapterPostableMessage,
+  type Attachment,
   type ChatInstance,
   type FetchOptions,
   type FetchResult,
@@ -15,8 +16,11 @@ import {
   type ThreadInfo,
   type WebhookOptions,
 } from "chat";
+import { extractCard, extractFiles } from "@chat-adapter/shared";
+import { cardToTemplateCard } from "../card";
 import { decryptCallback, encryptReply, verifyUrl } from "../crypto";
 import { WeComFormatConverter } from "../format";
+import { inferMediaType, uploadAppMedia } from "../media";
 import type {
   WeComAccessTokenResponse,
   WeComAppCallbackMessage,
@@ -37,6 +41,26 @@ export function parseCallbackXml(xml: string): WeComAppCallbackMessage {
     msgId: extractXmlField(xml, "MsgId") ?? undefined,
     picUrl: extractXmlField(xml, "PicUrl") ?? undefined,
     mediaId: extractXmlField(xml, "MediaId") ?? undefined,
+    format: extractXmlField(xml, "Format") ?? undefined,
+    recognition: extractXmlField(xml, "Recognition") ?? undefined,
+    thumbMediaId: extractXmlField(xml, "ThumbMediaId") ?? undefined,
+    fileName: extractXmlField(xml, "FileName") ?? undefined,
+    fileSize: extractXmlField(xml, "FileSize")
+      ? Number(extractXmlField(xml, "FileSize"))
+      : undefined,
+    locationX: extractXmlField(xml, "Location_X")
+      ? Number(extractXmlField(xml, "Location_X"))
+      : undefined,
+    locationY: extractXmlField(xml, "Location_Y")
+      ? Number(extractXmlField(xml, "Location_Y"))
+      : undefined,
+    scale: extractXmlField(xml, "Scale")
+      ? Number(extractXmlField(xml, "Scale"))
+      : undefined,
+    label: extractXmlField(xml, "Label") ?? undefined,
+    title: extractXmlField(xml, "Title") ?? undefined,
+    description: extractXmlField(xml, "Description") ?? undefined,
+    url: extractXmlField(xml, "Url") ?? undefined,
     event: extractXmlField(xml, "Event") ?? undefined,
     agentId: extractXmlField(xml, "AgentID") ?? undefined,
   };
@@ -118,7 +142,7 @@ export class WeComAppAdapter implements Adapter<WeComAppThreadId, WeComAppCallba
 
     const callbackMessage = parseCallbackXml(decryptedXml);
 
-    if (this.chat && callbackMessage.msgType === "text") {
+    if (this.chat && callbackMessage.msgType !== "event" && callbackMessage.msgType !== "") {
       const threadId = this.encodeThreadId({
         corpId: this.config.corpId,
         userId: callbackMessage.fromUserName,
@@ -150,15 +174,125 @@ export class WeComAppAdapter implements Adapter<WeComAppThreadId, WeComAppCallba
     message: AdapterPostableMessage,
   ): Promise<RawMessage<WeComAppCallbackMessage>> {
     const { userId } = this.decodeThreadId(threadId);
-    const text = this.formatConverter.renderPostable(message);
     const accessToken = await this.getAccessToken();
 
+    // 卡片 → template_card
+    const card = extractCard(message);
+    if (card) {
+      return this.sendTemplateCard(accessToken, userId, card);
+    }
+
+    // 文件 → 上传 → 媒体消息
+    const files = extractFiles(message);
+    if (files.length > 0) {
+      const file = files[0];
+      const mediaType = inferMediaType(file.filename, file.mimeType);
+      const mediaId = await uploadAppMedia(accessToken, file, this.config.fetch);
+      return this.sendMedia(accessToken, userId, mediaType, mediaId);
+    }
+
+    // 默认: markdown
+    const text = this.formatConverter.renderPostable(message);
+    return this.sendMarkdown(accessToken, userId, text);
+  }
+
+  private async sendMarkdown(
+    accessToken: string,
+    userId: string,
+    content: string,
+  ): Promise<RawMessage<WeComAppCallbackMessage>> {
     const appMessage: WeComAppMessage = {
       touser: userId,
       agentid: this.config.agentId,
-      msgtype: "text",
-      text: { content: text },
+      msgtype: "markdown",
+      markdown: { content },
     };
+
+    const result = await wecomRequest<WeComAppSendResponse>({
+      method: "POST",
+      url: "/cgi-bin/message/send",
+      params: { access_token: accessToken },
+      body: appMessage,
+      fetch: this.config.fetch,
+    });
+
+    return {
+      id: result.msgid ?? String(Date.now()),
+      raw: {} as WeComAppCallbackMessage,
+      threadId: `wecom-app:${this.config.corpId}:${userId}`,
+    };
+  }
+
+  private async sendTemplateCard(
+    accessToken: string,
+    userId: string,
+    card: Parameters<typeof cardToTemplateCard>[0],
+  ): Promise<RawMessage<WeComAppCallbackMessage>> {
+    const templateCard = cardToTemplateCard(card);
+    const appMessage: WeComAppMessage = {
+      touser: userId,
+      agentid: this.config.agentId,
+      msgtype: "template_card",
+      template_card: templateCard,
+    };
+
+    const result = await wecomRequest<WeComAppSendResponse>({
+      method: "POST",
+      url: "/cgi-bin/message/send",
+      params: { access_token: accessToken },
+      body: appMessage,
+      fetch: this.config.fetch,
+    });
+
+    return {
+      id: result.msgid ?? String(Date.now()),
+      raw: {} as WeComAppCallbackMessage,
+      threadId: `wecom-app:${this.config.corpId}:${userId}`,
+    };
+  }
+
+  private async sendMedia(
+    accessToken: string,
+    userId: string,
+    mediaType: "image" | "voice" | "video" | "file",
+    mediaId: string,
+  ): Promise<RawMessage<WeComAppCallbackMessage>> {
+    const threadId = `wecom-app:${this.config.corpId}:${userId}`;
+
+    let appMessage: WeComAppMessage;
+    switch (mediaType) {
+      case "image":
+        appMessage = {
+          touser: userId,
+          agentid: this.config.agentId,
+          msgtype: "image",
+          image: { media_id: mediaId },
+        };
+        break;
+      case "voice":
+        appMessage = {
+          touser: userId,
+          agentid: this.config.agentId,
+          msgtype: "voice",
+          voice: { media_id: mediaId },
+        };
+        break;
+      case "video":
+        appMessage = {
+          touser: userId,
+          agentid: this.config.agentId,
+          msgtype: "video",
+          video: { media_id: mediaId },
+        };
+        break;
+      default:
+        appMessage = {
+          touser: userId,
+          agentid: this.config.agentId,
+          msgtype: "file",
+          file: { media_id: mediaId },
+        };
+    }
 
     const result = await wecomRequest<WeComAppSendResponse>({
       method: "POST",
@@ -217,14 +351,15 @@ export class WeComAppAdapter implements Adapter<WeComAppThreadId, WeComAppCallba
   async startTyping(_threadId: string, _status?: string): Promise<void> {}
 
   parseMessage(raw: WeComAppCallbackMessage): Message<WeComAppCallbackMessage> {
+    const text = extractMessageText(raw);
     return new Message({
       id: raw.msgId ?? String(Date.now()),
       threadId: this.encodeThreadId({
         corpId: this.config.corpId,
         userId: raw.fromUserName,
       }),
-      text: raw.content ?? "",
-      formatted: this.formatConverter.toAst(raw.content ?? ""),
+      text,
+      formatted: this.formatConverter.toAst(text),
       raw,
       author: {
         userId: raw.fromUserName,
@@ -234,7 +369,7 @@ export class WeComAppAdapter implements Adapter<WeComAppThreadId, WeComAppCallba
         isMe: false,
       },
       metadata: { dateSent: new Date(raw.createTime * 1000), edited: false },
-      attachments: [],
+      attachments: parseAppAttachments(raw),
     });
   }
 
@@ -261,6 +396,74 @@ export class WeComAppAdapter implements Adapter<WeComAppThreadId, WeComAppCallba
     this.tokenExpiresAt = Date.now() + (result.expires_in ?? 7200) * 1000 - 300_000;
     return this.accessToken;
   }
+}
+
+function extractMessageText(raw: WeComAppCallbackMessage): string {
+  // 文本消息
+  if (raw.content) return raw.content;
+  // 语音识别结果
+  if (raw.recognition) return raw.recognition;
+  // 位置消息
+  if (raw.msgType === "location" && raw.locationX != null && raw.locationY != null) {
+    const parts = [raw.label ?? "位置分享"];
+    parts.push(`${raw.locationX}, ${raw.locationY}`);
+    if (raw.scale) parts.push(`缩放: ${raw.scale}`);
+    return parts.join("\n");
+  }
+  // 链接消息
+  if (raw.msgType === "link" && raw.title) {
+    const parts = [raw.title];
+    if (raw.description) parts.push(raw.description);
+    if (raw.url) parts.push(raw.url);
+    return parts.join("\n");
+  }
+  return "";
+}
+
+function parseAppAttachments(raw: WeComAppCallbackMessage): Attachment[] {
+  const attachments: Attachment[] = [];
+
+  if (raw.msgType === "image") {
+    attachments.push({
+      type: "image",
+      ...(raw.picUrl ? { url: raw.picUrl } : {}),
+      ...(raw.mediaId ? { fetchMetadata: { mediaId: raw.mediaId } } : {}),
+    });
+  }
+
+  if (raw.msgType === "voice" && raw.mediaId) {
+    const meta: Record<string, string> = { mediaId: raw.mediaId };
+    if (raw.format) meta.format = raw.format;
+    attachments.push({
+      type: "audio",
+      fetchMetadata: meta,
+    });
+  }
+
+  if (raw.msgType === "video" && raw.mediaId) {
+    attachments.push({
+      type: "video",
+      ...(raw.thumbMediaId
+        ? { fetchMetadata: { mediaId: raw.mediaId, thumbMediaId: raw.thumbMediaId } }
+        : { fetchMetadata: { mediaId: raw.mediaId } }),
+    });
+  }
+
+  if (raw.msgType === "file" && raw.mediaId) {
+    attachments.push({
+      type: "file",
+      fetchMetadata: { mediaId: raw.mediaId },
+      ...(raw.fileName ? { name: raw.fileName } : {}),
+      ...(raw.fileSize ? { size: raw.fileSize } : {}),
+    });
+  }
+
+  // 链接消息附带缩略图
+  if (raw.msgType === "link" && raw.picUrl) {
+    attachments.push({ type: "image", url: raw.picUrl });
+  }
+
+  return attachments;
 }
 
 export function createWeComAppAdapter(config: WeComAppConfig) {

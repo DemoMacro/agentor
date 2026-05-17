@@ -3,7 +3,7 @@
 
 import { H3, fromWebHandler, serve } from "h3";
 import { Message, type Adapter } from "chat";
-import { createWeComBotAdapter } from "../src";
+import { createWeComBotAdapter, fetchEncryptedMedia } from "../src";
 
 const BOT_TOKEN = process.env.WECOM_BOT_TOKEN!;
 const BOT_ENCODING_AES_KEY = process.env.WECOM_BOT_ENCODING_AES_KEY!;
@@ -69,10 +69,43 @@ async function startServer() {
       factory: () => Promise<Message<unknown>>,
     ) => {
       const message = await factory();
-      console.log(`\n[Message] ${message.author.userName}: ${message.text}`);
+      const attachmentInfo =
+        message.attachments.length > 0
+          ? ` [${message.attachments.map((a) => a.type).join(", ")}]`
+          : "";
+      console.log(`\n[Message] ${message.author.userName}: ${message.text}${attachmentInfo}`);
       console.log(`  Thread: ${message.threadId}`);
 
-      const result = await adapter.postMessage(threadId, message.text);
+      // 解密附件并返回 URL 和 key
+      let reply: string;
+      if (message.attachments.length > 0) {
+        const parts: string[] = [];
+        for (const attachment of message.attachments) {
+          const aeskey = attachment.fetchMetadata?.aeskey;
+          if (aeskey && attachment.url) {
+            try {
+              const { data: decrypted, filename: originalName } = await fetchEncryptedMedia(
+                attachment.url,
+                aeskey as string,
+              );
+              parts.push(
+                `**${attachment.type}**: ${decrypted.length} bytes${originalName ? ` (${originalName})` : ""}\nurl: ${attachment.url}\naeskey: ${aeskey}`,
+              );
+            } catch {
+              parts.push(
+                `**${attachment.type}**: decrypt failed\nurl: ${attachment.url}\naeskey: ${aeskey}`,
+              );
+            }
+          } else {
+            parts.push(`**${attachment.type}**: ${attachment.url ?? attachment.name ?? "unknown"}`);
+          }
+        }
+        reply = parts.join("\n\n");
+      } else {
+        reply = message.text;
+      }
+
+      const result = await adapter.postMessage(threadId, reply);
       console.log(`  Reply sent, ID: ${result.id}`);
     },
   } as never);

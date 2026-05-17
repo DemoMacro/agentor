@@ -8,6 +8,148 @@ export interface WeComBaseResponse {
   errmsg: string;
 }
 
+// --- Template Card 类型 ---
+// https://developer.work.weixin.qq.com/document/path/91770
+
+export interface WeComCardSource {
+  icon_url?: string;
+  desc?: string;
+  desc_color?: 0 | 1;
+}
+
+export interface WeComCardActionMenu {
+  desc: string;
+  action_list: Array<{ text: string; key: string }>;
+}
+
+export interface WeComCardMainTitle {
+  title: string;
+  desc?: string;
+}
+
+export interface WeComCardEmphasis {
+  title: string;
+  desc?: string;
+}
+
+export interface WeComCardImage {
+  url: string;
+  aspect_ratio?: number;
+}
+
+export interface WeComCardImageTextArea {
+  type?: 0 | 1;
+  url?: string;
+  appid?: string;
+  pagepath?: string;
+  title?: string;
+  desc?: string;
+  image_url: string;
+}
+
+export interface WeComCardQuoteArea {
+  type?: 0 | 1;
+  url?: string;
+  appid?: string;
+  pagepath?: string;
+  title?: string;
+  quote_text: string;
+}
+
+export interface WeComHorizontalContentItem {
+  keyname: string;
+  value: string;
+  type?: 0 | 1 | 2 | 3;
+  url?: string;
+  media_id?: string;
+  userid?: string;
+}
+
+export interface WeComVerticalContentItem {
+  title: string;
+  desc?: string;
+}
+
+export interface WeComJumpItem {
+  type: 0 | 1 | 2 | 3;
+  url?: string;
+  appid?: string;
+  pagepath?: string;
+  title: string;
+  question?: string;
+}
+
+export interface WeComCardAction {
+  type: 0 | 1 | 2;
+  url?: string;
+  appid?: string;
+  pagepath?: string;
+}
+
+export interface WeComButtonItem {
+  text: string;
+  style: 1 | 2 | 3 | 4;
+  key: string;
+  type?: 0 | 1;
+  url?: string;
+}
+
+export interface WeComButtonSelection {
+  question_key: string;
+  title: string;
+  option_list: Array<{ id: string; text: string }>;
+  selected_id?: string;
+}
+
+export interface WeComCheckbox {
+  question_key: string;
+  option_list: Array<{ id: string; text: string; is_checked?: boolean }>;
+  disable?: boolean;
+  mode: 0 | 1;
+}
+
+export interface WeComSelectListItem {
+  question_key: string;
+  title: string;
+  disable?: boolean;
+  selected_id?: string;
+  option_list: Array<{ id: string; text: string }>;
+}
+
+export interface WeComSubmitButton {
+  text: string;
+  key: string;
+}
+
+export type WeComCardType =
+  | "text_notice"
+  | "news_notice"
+  | "button_interaction"
+  | "vote_interaction"
+  | "multiple_interaction";
+
+export interface WeComTemplateCard {
+  card_type: WeComCardType;
+  source?: WeComCardSource;
+  action_menu?: WeComCardActionMenu;
+  main_title: WeComCardMainTitle;
+  emphasis_content?: WeComCardEmphasis;
+  sub_title_text?: string;
+  card_image?: WeComCardImage;
+  image_text_area?: WeComCardImageTextArea;
+  quote_area?: WeComCardQuoteArea;
+  horizontal_content_list?: WeComHorizontalContentItem[];
+  vertical_content_list?: WeComVerticalContentItem[];
+  jump_list?: WeComJumpItem[];
+  card_action?: WeComCardAction;
+  button_list?: WeComButtonItem[];
+  button_selection?: WeComButtonSelection;
+  checkbox?: WeComCheckbox;
+  select_list?: WeComSelectListItem[];
+  submit_button?: WeComSubmitButton;
+  task_id?: string;
+}
+
 // --- Webhook (群机器人) message types ---
 
 export interface WeComWebhookTextMessage {
@@ -53,7 +195,7 @@ export interface WeComWebhookVoiceMessage {
 
 export interface WeComWebhookTemplateCardMessage {
   msgtype: "template_card";
-  template_card: Record<string, unknown>;
+  template_card: WeComTemplateCard;
 }
 
 export type WeComWebhookMessage =
@@ -107,6 +249,9 @@ export interface WsBotCallbackBody {
   msgtype: "text" | "image" | "mixed" | "voice" | "file" | "video" | "event";
   text?: { content: string };
   image?: { url: string; aeskey: string };
+  voice?: { url: string; aeskey: string };
+  file?: { url: string; aeskey: string; filename?: string; filesize?: number };
+  video?: { url: string; aeskey: string };
   event?: { eventtype: string };
 }
 
@@ -168,7 +313,7 @@ export type WeComAppMessage = WeComAppMessageBase & {
         };
       }
     | { msgtype: "miniprogram_notice"; miniprogram_notice: Record<string, unknown> }
-    | { msgtype: "template_card"; template_card: Record<string, unknown> }
+    | { msgtype: "template_card"; template_card: WeComTemplateCard }
   );
 
 // --- App (应用) 回调 XML 消息 ---
@@ -184,6 +329,18 @@ export interface WeComAppCallbackMessage {
   msgId?: string;
   picUrl?: string;
   mediaId?: string;
+  format?: string;
+  recognition?: string;
+  thumbMediaId?: string;
+  fileName?: string;
+  fileSize?: number;
+  locationX?: number;
+  locationY?: number;
+  scale?: number;
+  label?: string;
+  title?: string;
+  description?: string;
+  url?: string;
   event?: string;
   agentId?: string;
 }
@@ -200,6 +357,12 @@ export interface WeComAppSendResponse extends WeComBaseResponse {
 export interface WeComAccessTokenResponse extends WeComBaseResponse {
   access_token?: string;
   expires_in?: number;
+}
+
+export interface WeComMediaUploadResponse extends WeComBaseResponse {
+  type?: string;
+  media_id?: string;
+  created_at?: string;
 }
 
 // --- Config types ---

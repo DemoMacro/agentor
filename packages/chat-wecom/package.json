@@ -1,14 +1,17 @@
 {
   "name": "@agentor/chat-wecom",
-  "version": "0.0.2",
-  "description": "WeChat Work (企业微信) integration toolkit with Webhook, Bot, and App support",
+  "version": "0.0.3",
+  "description": "企业微信 (WeCom) Chat SDK 适配器，支持 Webhook 群机器人、智能机器人（回调 URL / WebSocket 长连接）和自建应用",
   "keywords": [
+    "agentor",
     "bot",
-    "chat",
-    "webhook",
-    "wechat-work",
+    "chat-adapter",
     "wecom",
-    "企业微信"
+    "template-card",
+    "wechat-work",
+    "websocket",
+    "企业微信",
+    "群机器人"
   ],
   "homepage": "https://github.com/DemoMacro/agentor#readme",
   "bugs": {
