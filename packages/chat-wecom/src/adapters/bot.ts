@@ -73,7 +73,7 @@ export class WeComBotAdapter implements Adapter<WeComBotThreadId, BotRawMessage>
     if (isCallbackConfig(this.config)) return;
 
     this.wsManager = new BotWebSocketManager(this.config);
-    this.wsManager.onMessage((body, reqId) => {
+    this.wsManager.onMessage((body) => {
       if (!this.chat) return;
       const threadId = this.encodeThreadId({
         chatId: body.chatid ?? body.from.userid,
