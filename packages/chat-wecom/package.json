@@ -1,0 +1,54 @@
+{
+  "name": "@agentor/chat-wecom",
+  "version": "0.0.1",
+  "description": "WeChat Work (企业微信) integration toolkit with Webhook, Bot, and App support",
+  "keywords": [
+    "bot",
+    "chat",
+    "webhook",
+    "wechat-work",
+    "wecom",
+    "企业微信"
+  ],
+  "homepage": "https://github.com/DemoMacro/agentor#readme",
+  "bugs": {
+    "url": "https://github.com/DemoMacro/agentor/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Demo Macro",
+    "email": "abc@imst.xyz",
+    "url": "https://www.demomacro.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DemoMacro/agentor.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "dev": "basis build --stub",
+    "build": "basis build",
+    "prepack": "pnpm build"
+  },
+  "dependencies": {
+    "@chat-adapter/shared": "4.28.1"
+  },
+  "devDependencies": {
+    "chat": "^4.28.1",
+    "h3": "2.0.1-rc.22"
+  },
+  "peerDependencies": {
+    "chat": "^4.0.0"
+  }
+}
