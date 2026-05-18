@@ -26,8 +26,9 @@ import {
   type ParseResult,
 } from "@ai-sdk/provider-utils";
 import { z } from "zod/v4";
-import { failedResponseHandler, type DashScopeConfig } from "./utils";
+
 import type { DashScopeChatOptions } from "./types";
+import { failedResponseHandler, type DashScopeConfig } from "./utils";
 
 // --- Schemas ---
 

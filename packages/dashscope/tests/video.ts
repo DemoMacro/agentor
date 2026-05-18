@@ -1,6 +1,8 @@
-import { dashscope } from "../src";
-import { experimental_generateVideo as generateVideo } from "ai";
 import { mkdirSync, writeFileSync } from "fs";
+
+import { experimental_generateVideo as generateVideo } from "ai";
+
+import { dashscope } from "../src";
 
 // --- Basic video generation (text-to-video) ---
 

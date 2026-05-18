@@ -22,13 +22,14 @@ import {
   zodSchema,
 } from "@ai-sdk/provider-utils";
 import { z } from "zod/v4";
+
+import type { DashScopeResponsesOptions } from "./types";
 import {
   convertResponsesUsage,
   failedResponseHandler,
   type DashScopeConfig,
   type ResponsesUsage,
 } from "./utils";
-import type { DashScopeResponsesOptions } from "./types";
 
 // --- Schemas ---
 

@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+
 import type { CardElement } from "chat";
+
 import { createWeComWebhookAdapter } from "../src";
 
 const WEBHOOK_KEY = process.env.WECOM_WEBHOOK_KEY!;

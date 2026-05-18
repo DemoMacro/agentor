@@ -1,5 +1,6 @@
-import { dashscope } from "../src";
 import { embed, embedMany } from "ai";
+
+import { dashscope } from "../src";
 
 // --- Basic embedding ---
 

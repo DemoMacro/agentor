@@ -3,8 +3,10 @@
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { H3, fromWebHandler, serve } from "h3";
+
 import { Message, type Adapter, type FileUpload } from "chat";
+import { H3, fromWebHandler, serve } from "h3";
+
 import { createWeComAppAdapter, downloadAppMedia } from "../src";
 
 const CORP_ID = process.env.WECOM_APP_CORP_ID!;
@@ -172,7 +174,9 @@ async function startServer() {
             mediaFiles.push({
               data: result.data,
               filename:
-                attachment.name ?? result.filename ?? `echo-${attachment.type}${extMap[attachment.type] ?? ""}`,
+                attachment.name ??
+                result.filename ??
+                `echo-${attachment.type}${extMap[attachment.type] ?? ""}`,
               mimeType:
                 attachment.type === "image"
                   ? "image/jpeg"

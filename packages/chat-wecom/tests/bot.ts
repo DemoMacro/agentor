@@ -1,8 +1,9 @@
 // 智能机器人 - 回调 URL 模式测试
 // 启动 h3 服务器接收企业微信回调，用于 URL 验证和消息接收测试
 
-import { H3, fromWebHandler, serve } from "h3";
 import { Message, type Adapter } from "chat";
+import { H3, fromWebHandler, serve } from "h3";
+
 import { createWeComBotAdapter, fetchEncryptedMedia } from "../src";
 
 const BOT_TOKEN = process.env.WECOM_BOT_TOKEN!;

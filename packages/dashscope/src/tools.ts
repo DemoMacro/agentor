@@ -1,9 +1,9 @@
-import { z } from "zod/v4";
 import {
   createProviderToolFactoryWithOutputSchema,
   lazySchema,
   zodSchema,
 } from "@ai-sdk/provider-utils";
+import { z } from "zod/v4";
 
 // --- Web Search ---
 

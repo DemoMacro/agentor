@@ -1,6 +1,7 @@
-import { dashscope } from "../src";
 import { generateText, Output } from "ai";
 import { z } from "zod/v4";
+
+import { dashscope } from "../src";
 
 // --- JSON mode via providerOptions ---
 

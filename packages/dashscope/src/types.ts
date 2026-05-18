@@ -8,6 +8,7 @@ import type {
   TranscriptionModelV3,
 } from "@ai-sdk/provider";
 import type { FetchFunction } from "@ai-sdk/provider-utils";
+
 import type { DashScopeResponsesTools } from "./tools";
 
 // --- Region ---

@@ -1,5 +1,6 @@
 import { OpenAICompatibleEmbeddingModel } from "@ai-sdk/openai-compatible";
 import type { FetchFunction } from "@ai-sdk/provider-utils";
+
 import type { DashScopeConfig } from "./utils";
 
 // --- Options ---

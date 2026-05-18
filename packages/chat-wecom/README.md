@@ -96,7 +96,7 @@ const adapter = createWeComAppAdapter({
   corpId: process.env.WECOM_APP_CORP_ID!,
   corpSecret: process.env.WECOM_APP_CORP_SECRET!,
   agentId: Number(process.env.WECOM_APP_AGENT_ID!),
-  token: process.env.WECOM_APP_TOKEN,           // 接收回调时必填
+  token: process.env.WECOM_APP_TOKEN, // 接收回调时必填
   encodingAESKey: process.env.WECOM_APP_ENCODING_AES_KEY, // 接收回调时必填
 });
 
@@ -118,29 +118,29 @@ const token = await adapter.getAccessToken();
 
 ### 接收消息
 
-| 消息类型 | Webhook | Bot (回调/WS) | App |
-| -------- | ------- | ------------- | --- |
-| 文本 (text) | — | ✅ | ✅ |
-| 图片 (image) | — | ✅ | ✅ |
-| 语音 (voice) | — | ✅ | ✅ |
-| 视频 (video) | — | ✅ | ✅ |
-| 文件 (file) | — | ✅ | — |
-| 位置 (location) | — | — | ✅ |
-| 链接 (link) | — | — | ✅ |
-| 混合 (mixed) | — | ✅ | — |
+| 消息类型        | Webhook | Bot (回调/WS) | App |
+| --------------- | ------- | ------------- | --- |
+| 文本 (text)     | —       | ✅            | ✅  |
+| 图片 (image)    | —       | ✅            | ✅  |
+| 语音 (voice)    | —       | ✅            | ✅  |
+| 视频 (video)    | —       | ✅            | ✅  |
+| 文件 (file)     | —       | ✅            | —   |
+| 位置 (location) | —       | —             | ✅  |
+| 链接 (link)     | —       | —             | ✅  |
+| 混合 (mixed)    | —       | ✅            | —   |
 
 > Webhook 为单向推送，不支持接收消息。App 不支持 file 类型回调（企业微信平台限制），视频和语音需通过企业微信内置录制功能发送。
 
 ### 发送消息
 
-| 消息类型 | Webhook | Bot (回调) | Bot (WS) | App |
-| -------- | ------- | ---------- | -------- | --- |
-| Markdown | ✅ | ✅ | ✅ | ✅ |
-| 图片 (image) | ✅ base64 | — | ✅ media_id | ✅ media_id |
-| 语音 (voice) | ✅ | — | ✅ | ✅ |
-| 视频 (video) | — | — | ✅ | ✅ |
-| 文件 (file) | ✅ | — | ✅ | ✅ |
-| Template Card | ✅ | ✅ | ✅ | ✅ |
+| 消息类型      | Webhook   | Bot (回调) | Bot (WS)    | App         |
+| ------------- | --------- | ---------- | ----------- | ----------- |
+| Markdown      | ✅        | ✅         | ✅          | ✅          |
+| 图片 (image)  | ✅ base64 | —          | ✅ media_id | ✅ media_id |
+| 语音 (voice)  | ✅        | —          | ✅          | ✅          |
+| 视频 (video)  | —         | —          | ✅          | ✅          |
+| 文件 (file)   | ✅        | —          | ✅          | ✅          |
+| Template Card | ✅        | ✅         | ✅          | ✅          |
 
 > Webhook 和 Bot (回调) 的 Template Card 仅支持 `text_notice` 和 `news_notice` 两种类型。Bot (WS) 和 App 支持全部 5 种卡片类型。Bot (WS) 的媒体消息通过 `respond_msg`（回复消息）发送，主动推送 (`send_msg`) 仅支持 Markdown 和 Template Card。
 
@@ -183,12 +183,12 @@ const { data, filename } = await fetchEncryptedMedia(url, aeskey);
 
 支持将 Chat SDK 的 `CardElement` 自动转换为企业微信 Template Card（5 种卡片类型）：
 
-| 卡片类型 | 说明 |
-| -------- | ---- |
-| `text_notice` | 文本通知 |
-| `news_notice` | 图文通知 |
-| `button_interaction` | 按钮交互 |
-| `vote_interaction` | 投票交互 |
+| 卡片类型               | 说明     |
+| ---------------------- | -------- |
+| `text_notice`          | 文本通知 |
+| `news_notice`          | 图文通知 |
+| `button_interaction`   | 按钮交互 |
+| `vote_interaction`     | 投票交互 |
 | `multiple_interaction` | 多选交互 |
 
 卡片类型根据 `CardElement` 内容自动推断：

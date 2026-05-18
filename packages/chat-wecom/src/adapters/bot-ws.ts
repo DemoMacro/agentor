@@ -2,6 +2,7 @@
 // 智能机器人 WebSocket 长连接管理器
 
 import { createHash, randomBytes } from "node:crypto";
+
 import type { WeComBotWebSocketConfig, WsBotCallbackBody, WsFrame } from "../types";
 
 const DEFAULT_WS_URL = "wss://openws.work.weixin.qq.com";

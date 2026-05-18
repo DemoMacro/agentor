@@ -2,6 +2,7 @@
 // 直连企业微信 WebSocket 服务，测试消息收发
 
 import { Message, type Adapter, type FileUpload } from "chat";
+
 import { createWeComBotAdapter, fetchEncryptedMedia } from "../src";
 
 const BOT_WS_BOT_ID = process.env.WECOM_BOT_WS_BOT_ID;
@@ -81,7 +82,9 @@ async function wsConnectTest() {
             mediaFiles.push({
               data: decrypted,
               filename:
-                attachment.name ?? originalName ?? `echo-${attachment.type}${extMap[attachment.type] ?? ""}`,
+                attachment.name ??
+                originalName ??
+                `echo-${attachment.type}${extMap[attachment.type] ?? ""}`,
               mimeType:
                 attachment.type === "image"
                   ? "image/jpeg"

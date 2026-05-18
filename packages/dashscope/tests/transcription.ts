@@ -1,5 +1,6 @@
-import { dashscope } from "../src";
 import { experimental_transcribe as transcribe } from "ai";
+
+import { dashscope } from "../src";
 
 // --- Short audio transcription (sync) ---
 

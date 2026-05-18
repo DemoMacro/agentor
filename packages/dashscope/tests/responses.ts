@@ -1,6 +1,7 @@
-import { dashscope } from "../src";
 import { generateText, hasToolCall, streamText, tool } from "ai";
 import { z } from "zod/v4";
+
+import { dashscope } from "../src";
 
 // --- Basic response ---
 

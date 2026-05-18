@@ -1,6 +1,9 @@
 // https://developer.work.weixin.qq.com/document/path/91770
 // 群机器人 Webhook: 单向推送消息到群聊
 
+import { createHash } from "node:crypto";
+
+import { extractCard, extractFiles, toBufferSync } from "@chat-adapter/shared";
 import {
   Message,
   NotImplementedError,
@@ -14,13 +17,12 @@ import {
   type ThreadInfo,
   type WebhookOptions,
 } from "chat";
-import { extractCard, extractFiles, toBufferSync } from "@chat-adapter/shared";
+
 import { cardToTemplateCard } from "../card";
 import { WeComFormatConverter } from "../format";
 import { inferMediaType, uploadWebhookMedia } from "../media";
 import type { WeComBaseResponse, WeComTemplateCard, WeComWebhookConfig } from "../types";
 import { wecomRequest } from "../utils";
-import { createHash } from "node:crypto";
 
 export interface WeComWebhookThreadId {
   key: string;

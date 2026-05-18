@@ -1,5 +1,6 @@
-import { dashscope } from "../src";
 import { generateText } from "ai";
+
+import { dashscope } from "../src";
 
 // --- Explicit cache ---
 // Minimum 1024 tokens for cache creation. Use repeat(400) to exceed threshold.

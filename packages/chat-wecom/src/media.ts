@@ -2,8 +2,9 @@
 // 支持应用消息上传和 Webhook 上传
 
 import type { FileUpload } from "chat";
-import type { WeComMediaUploadResponse } from "./types";
+
 import { decryptMedia } from "./crypto";
+import type { WeComMediaUploadResponse } from "./types";
 import { wecomUpload } from "./utils";
 
 const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif", "bmp"]);
@@ -58,7 +59,8 @@ function extractFilename(headers: Headers, url: string): string | undefined {
       if (decoded) return decoded;
     }
     // filename="name" or filename=name
-    const match = disposition.match(/filename\s*=\s*"([^"]+)"/i) ??
+    const match =
+      disposition.match(/filename\s*=\s*"([^"]+)"/i) ??
       disposition.match(/filename\s*=\s*([^";\s]+)/i);
     if (match) {
       const name = match[1].trim();

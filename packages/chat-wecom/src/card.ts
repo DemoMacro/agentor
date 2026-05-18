@@ -16,6 +16,7 @@ import type {
   LinkElement,
   SectionElement,
 } from "chat";
+
 import type {
   WeComTemplateCard,
   WeComCardType,

@@ -6,10 +6,10 @@
     "agentor",
     "bot",
     "chat-adapter",
-    "wecom",
     "template-card",
-    "wechat-work",
     "websocket",
+    "wechat-work",
+    "wecom",
     "企业微信",
     "群机器人"
   ],
@@ -46,12 +46,5 @@
   },
   "dependencies": {
     "@chat-adapter/shared": "4.28.1"
-  },
-  "devDependencies": {
-    "chat": "^4.28.1",
-    "h3": "2.0.1-rc.22"
-  },
-  "peerDependencies": {
-    "chat": "^4.0.0"
   }
 }

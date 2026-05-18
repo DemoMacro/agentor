@@ -2,6 +2,7 @@
 // 加解密方案说明: AES-256-CBC + SHA1 签名验证
 
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+
 import type { WeComCallbackQuery, WeComEncryptedBody, WeComEncryptedReply } from "./types";
 
 // --- Key helpers ---

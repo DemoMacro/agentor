@@ -1,6 +1,7 @@
 // https://developer.work.weixin.qq.com/document/path/101039
 // 智能机器人: 支持回调 URL 和 WebSocket 长连接两种模式
 
+import { extractCard, extractFiles } from "@chat-adapter/shared";
 import {
   Message,
   NotImplementedError,
@@ -15,12 +16,11 @@ import {
   type ThreadInfo,
   type WebhookOptions,
 } from "chat";
-import { extractCard, extractFiles } from "@chat-adapter/shared";
+
 import { cardToTemplateCard } from "../card";
 import { decryptCallback, encryptReply, verifyUrl } from "../crypto";
 import { WeComFormatConverter } from "../format";
 import { inferMediaType } from "../media";
-import { BotWebSocketManager } from "./bot-ws";
 import type {
   WeComBaseResponse,
   WeComBotCallbackConfig,
@@ -29,6 +29,7 @@ import type {
   WeComEncryptedBody,
   WsBotCallbackBody,
 } from "../types";
+import { BotWebSocketManager } from "./bot-ws";
 
 export interface WeComBotThreadId {
   chatId: string;

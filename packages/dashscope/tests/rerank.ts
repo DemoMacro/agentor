@@ -1,5 +1,6 @@
-import { dashscope } from "../src";
 import { rerank } from "ai";
+
+import { dashscope } from "../src";
 
 // --- Basic rerank ---
 

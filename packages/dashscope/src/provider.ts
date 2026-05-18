@@ -5,8 +5,8 @@ import { DashScopeImageModel } from "./image";
 import { DashScopeRerankingModel } from "./rerank";
 import { DashScopeResponsesLanguageModel } from "./responses";
 import { DashScopeSpeechModel } from "./speech";
-import { DashScopeTranscriptionModel } from "./transcription";
 import { responsesTools } from "./tools";
+import { DashScopeTranscriptionModel } from "./transcription";
 import type {
   DashScopeChatOptions,
   DashScopeProvider,

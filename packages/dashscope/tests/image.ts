@@ -1,6 +1,8 @@
-import { dashscope } from "../src";
-import { generateImage } from "ai";
 import { mkdirSync, writeFileSync } from "fs";
+
+import { generateImage } from "ai";
+
+import { dashscope } from "../src";
 
 // --- Basic image generation ---
 

@@ -1,6 +1,8 @@
-import { dashscope } from "../src";
-import { experimental_generateSpeech as generateSpeech } from "ai";
 import { mkdirSync, writeFileSync } from "fs";
+
+import { experimental_generateSpeech as generateSpeech } from "ai";
+
+import { dashscope } from "../src";
 
 // --- Basic speech synthesis (CosyVoice) ---
 

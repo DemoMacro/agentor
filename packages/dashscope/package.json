@@ -47,8 +47,5 @@
     "@ai-sdk/provider": "3.0.10",
     "@ai-sdk/provider-utils": "4.0.27",
     "zod": "4.4.3"
-  },
-  "devDependencies": {
-    "ai": "6.0.184"
   }
 }

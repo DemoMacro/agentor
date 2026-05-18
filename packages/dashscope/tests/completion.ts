@@ -1,5 +1,6 @@
-import { dashscope } from "../src";
 import { generateText, streamText } from "ai";
+
+import { dashscope } from "../src";
 
 // --- Basic completion (FIM: Fill-In-the-Middle) ---
 

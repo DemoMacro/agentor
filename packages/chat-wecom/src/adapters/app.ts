@@ -2,6 +2,7 @@
 // 企业微信应用: 发送应用消息、接收回调事件、Token 管理
 // 回调消息全程使用 XML 格式
 
+import { extractCard, extractFiles } from "@chat-adapter/shared";
 import {
   Message,
   NotImplementedError,
@@ -16,7 +17,7 @@ import {
   type ThreadInfo,
   type WebhookOptions,
 } from "chat";
-import { extractCard, extractFiles } from "@chat-adapter/shared";
+
 import { cardToTemplateCard } from "../card";
 import { decryptCallback, encryptReply, verifyUrl } from "../crypto";
 import { WeComFormatConverter } from "../format";
@@ -54,9 +55,7 @@ export function parseCallbackXml(xml: string): WeComAppCallbackMessage {
     locationY: extractXmlField(xml, "Location_Y")
       ? Number(extractXmlField(xml, "Location_Y"))
       : undefined,
-    scale: extractXmlField(xml, "Scale")
-      ? Number(extractXmlField(xml, "Scale"))
-      : undefined,
+    scale: extractXmlField(xml, "Scale") ? Number(extractXmlField(xml, "Scale")) : undefined,
     label: extractXmlField(xml, "Label") ?? undefined,
     title: extractXmlField(xml, "Title") ?? undefined,
     description: extractXmlField(xml, "Description") ?? undefined,
