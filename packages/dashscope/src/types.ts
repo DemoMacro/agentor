@@ -1,8 +1,7 @@
 import type {
-  EmbeddingModelV3,
   Experimental_VideoModelV3 as VideoModelV3,
-  ImageModelV3,
   LanguageModelV3,
+  ProviderV3,
   RerankingModelV3,
   SpeechModelV3,
   TranscriptionModelV3,
@@ -78,16 +77,13 @@ export interface DashScopeResponsesNamespace {
 
 // --- Provider interface ---
 
-export interface DashScopeProvider {
-  (modelId: string): LanguageModelV3;
-  languageModel(modelId: string): LanguageModelV3;
-  completionModel(modelId: string): LanguageModelV3;
-  embeddingModel(modelId: string): EmbeddingModelV3;
+export interface DashScopeProvider extends ProviderV3 {
   rerankingModel(modelId: string): RerankingModelV3;
-  imageModel(modelId: string): ImageModelV3;
-  videoModel(modelId: string): VideoModelV3;
   speechModel(modelId: string): SpeechModelV3;
   transcriptionModel(modelId: string): TranscriptionModelV3;
+  (modelId: string): LanguageModelV3;
+  completionModel(modelId: string): LanguageModelV3;
+  videoModel(modelId: string): VideoModelV3;
   chatOptions: (options: DashScopeChatOptions) => {
     providerOptions: { dashscope: DashScopeChatOptions };
   };

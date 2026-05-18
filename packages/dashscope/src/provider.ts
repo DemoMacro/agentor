@@ -106,6 +106,7 @@ export function createDashScope(options: DashScopeProviderSettings = {}): DashSc
     });
 
   return Object.assign(createChatModel, {
+    specificationVersion: "v3" as const,
     languageModel: createChatModel,
     completionModel: createCompletionModel,
     embeddingModel: createEmbeddingModel,

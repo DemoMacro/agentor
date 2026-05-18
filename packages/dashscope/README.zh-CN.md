@@ -1,30 +1,30 @@
 # @agentor/dashscope
 
-**[English](./README.md)** | [中文](./README.zh-CN.md)
+[English](./README.md) | **[中文](./README.zh-CN.md)**
 
 ![npm version](https://img.shields.io/npm/v/@agentor/dashscope)
 ![npm downloads](https://img.shields.io/npm/dw/@agentor/dashscope)
 ![npm license](https://img.shields.io/npm/l/@agentor/dashscope)
 
-> [AI SDK](https://ai-sdk.dev/) provider for [Alibaba Cloud DashScope (Bailian)](https://help.aliyun.com/en/model-studio/) API.
+> [AI SDK](https://ai-sdk.dev/) provider for [Alibaba Cloud DashScope (Bailian)](https://help.aliyun.com/zh/model-studio/) API.
 
-## Features
+## 功能特性
 
-- **Chat Completions** - `/chat/completions` with function calling, streaming, reasoning, and vision
-- **Completions (FIM)** - `/completions` for code completion with Qwen Coder models
-- **Responses** - `/responses` endpoint with built-in tools (web search, code interpreter, MCP, etc.)
-- **Embedding** - Text vectorization via `/embeddings` endpoint
-- **Reranking** - Document reranking via `/reranks` endpoint
-- **Image Generation** - Text-to-image via multimodal generation endpoint
-- **Video Generation** - Text-to-video and image-to-video with async polling
-- **Speech Synthesis** - Text-to-speech for CosyVoice and Qwen-TTS models
-- **Transcription** - Speech-to-text for short and long audio
-- **Built-in Tools** - Web search, code interpreter, web extractor, file search, web search image, image search, MCP integration
-- **Thinking Mode** - Enable reasoning/thinking with configurable budget
-- **Multi-region** - Beijing, Singapore, US, Germany regions
-- **TypeScript-First** - Full type safety with comprehensive TypeScript support
+- **Chat Completions** - `/chat/completions`，支持函数调用、流式输出、推理和视觉
+- **Completions (FIM)** - `/completions`，Qwen Coder 模型的代码补全
+- **Responses** - `/responses` 端点，内置工具（联网搜索、代码解释器、MCP 等）
+- **Embedding** - `/embeddings` 端点的文本向量化
+- **Reranking** - `/reranks` 端点的文档重排序
+- **Image Generation** - 多模态生成端点的文生图
+- **Video Generation** - 文生视频和图生视频，异步轮询
+- **Speech Synthesis** - CosyVoice 和 Qwen-TTS 模型的文本转语音
+- **Transcription** - 短音频和长音频的语音转文字
+- **Built-in Tools** - 联网搜索、代码解释器、网页提取、文件搜索、以图搜图、MCP 集成
+- **Thinking Mode** - 可配置预算的推理/思考模式
+- **Multi-region** - 北京、新加坡、美国、德国区域
+- **TypeScript-First** - 完整的类型安全支持
 
-## Installation
+## 安装
 
 ```bash
 # Install with npm
@@ -37,9 +37,9 @@ $ yarn add @agentor/dashscope
 $ pnpm add @agentor/dashscope
 ```
 
-## Quick Start
+## 快速开始
 
-### Setup
+### 初始化
 
 ```typescript
 import { createDashScope } from "@agentor/dashscope";
@@ -49,13 +49,13 @@ const dashscope = createDashScope({
 });
 ```
 
-Or use the default instance (reads `DASHSCOPE_API_KEY` from environment):
+或使用默认实例（自动读取 `DASHSCOPE_API_KEY` 环境变量）：
 
 ```typescript
 import { dashscope } from "@agentor/dashscope";
 ```
 
-### Basic Chat
+### 基础对话
 
 ```typescript
 import { dashscope } from "@agentor/dashscope";
@@ -69,7 +69,7 @@ const result = await generateText({
 console.log(result.text);
 ```
 
-### Streaming
+### 流式输出
 
 ```typescript
 import { streamText } from "ai";
@@ -84,7 +84,7 @@ for await (const part of result.textStream) {
 }
 ```
 
-### Function Calling
+### 函数调用
 
 ```typescript
 import { generateText, hasToolCall, tool } from "ai";
@@ -110,9 +110,9 @@ const result = await generateText({
 
 ## Chat Completions API
 
-### Web Search
+### 联网搜索
 
-Enable web search via `providerOptions`:
+通过 `providerOptions` 启用联网搜索：
 
 ```typescript
 await generateText({
@@ -126,11 +126,11 @@ await generateText({
 });
 ```
 
-Options: `enableSearch`, `searchStrategy` (`"enable"` | `"enable_with_history"` | `"agent_max"`).
+选项：`enableSearch`、`searchStrategy`（`"enable"` | `"enable_with_history"` | `"agent_max"`）。
 
-### Code Interpreter
+### 代码解释器
 
-Enable code interpreter (requires thinking mode):
+启用代码解释器（需要开启思考模式）：
 
 ```typescript
 await generateText({
@@ -145,9 +145,9 @@ await generateText({
 });
 ```
 
-### Thinking Mode
+### 思考模式
 
-Enable reasoning with configurable budget:
+启用推理并配置 token 预算：
 
 ```typescript
 await generateText({
@@ -162,14 +162,14 @@ await generateText({
 });
 ```
 
-## Context Cache
+## 上下文缓存
 
-DashScope supports explicit caching to reduce cost and latency for repeated prefixes. Add `cacheControl` via `providerOptions` on messages or content parts:
+DashScope 支持显式缓存以减少重复前缀的成本和延迟。通过 `providerOptions` 在消息或内容块上添加 `cacheControl`：
 
 ```typescript
 import { generateText } from "ai";
 
-// Cache a long system prompt (minimum 1024 tokens)
+// 缓存长系统提示词（最少 1024 tokens）
 const first = await generateText({
   model: dashscope("qwen3.5-flash"),
   messages: [
@@ -184,7 +184,7 @@ const first = await generateText({
   ],
 });
 
-// Second request with same system prompt hits the cache
+// 第二次请求使用相同系统提示词会命中缓存
 const second = await generateText({
   model: dashscope("qwen3.5-flash"),
   messages: [
@@ -200,7 +200,7 @@ const second = await generateText({
 });
 ```
 
-Cache on user message content parts:
+在用户消息的内容块上设置缓存：
 
 ```typescript
 await generateText({
@@ -223,13 +223,13 @@ await generateText({
 });
 ```
 
-> Implicit caching is enabled automatically for supported models — no configuration needed.
+> 支持的模型会自动启用隐式缓存，无需配置。
 
-## JSON Output
+## JSON 输出
 
-### Structured Output with Schema
+### 带 Schema 的结构化输出
 
-Use `generateText` with `Output.object()` to generate typed JSON:
+使用 `generateText` 配合 `Output.object()` 生成类型化的 JSON：
 
 ```typescript
 import { generateText, Output } from "ai";
@@ -256,7 +256,7 @@ console.log(result.output);
 
 ## Completions (FIM)
 
-Use `completionModel()` for text/code completion via the `/completions` endpoint (Fill-In-the-Middle):
+使用 `completionModel()` 通过 `/completions` 端点进行文本/代码补全（Fill-In-the-Middle）：
 
 ```typescript
 const result = await generateText({
@@ -270,7 +270,7 @@ console.log(result.text);
 
 ## Responses API
 
-Use the `responses` namespace for the Responses API with built-in tools:
+使用 `responses` 命名空间访问带内置工具的 Responses API：
 
 ```typescript
 import { generateText } from "ai";
@@ -281,9 +281,9 @@ const result = await generateText({
 });
 ```
 
-### Built-in Tools
+### 内置工具
 
-#### Web Search
+#### 联网搜索
 
 ```typescript
 import { dashscope } from "@agentor/dashscope";
@@ -296,9 +296,9 @@ const result = await generateText({
 });
 ```
 
-Options: `forcedSearch`, `searchStrategy` (`"enable"` | `"enable_with_history"`).
+选项：`forcedSearch`、`searchStrategy`（`"enable"` | `"enable_with_history"`）。
 
-#### Code Interpreter
+#### 代码解释器
 
 ```typescript
 const result = await generateText({
@@ -308,7 +308,7 @@ const result = await generateText({
 });
 ```
 
-#### Web Extractor
+#### 网页提取
 
 ```typescript
 const result = await generateText({
@@ -318,9 +318,9 @@ const result = await generateText({
 });
 ```
 
-> Can be used together with `webSearch` for enhanced results.
+> 可与 `webSearch` 搭配使用以获得更好的结果。
 
-#### File Search
+#### 文件搜索
 
 ```typescript
 const result = await generateText({
@@ -334,7 +334,7 @@ const result = await generateText({
 });
 ```
 
-#### MCP Integration
+#### MCP 集成
 
 ```typescript
 const result = await generateText({
@@ -350,21 +350,21 @@ const result = await generateText({
 });
 ```
 
-Options: `serverProtocol`, `serverLabel`, `serverUrl`, `serverDescription`, `headers`.
+选项：`serverProtocol`、`serverLabel`、`serverUrl`、`serverDescription`、`headers`。
 
-#### Web Search Image
+#### 以文搜图
 
-Text-to-image search. Search images based on text description.
+基于文本描述搜索图片。
 
-#### Image Search
+#### 以图搜图
 
-Image-to-image search. Search similar images based on an input image.
+基于输入图片搜索相似图片。
 
-### Multi-turn Conversation
+### 多轮对话
 
-Options via `providerOptions.dashscope`: `previousResponseId`, `enableThinking`, `reasoning` (effort levels), `conversation`, `instructions`, `includeUsage`.
+通过 `providerOptions.dashscope` 配置：`previousResponseId`、`enableThinking`、`reasoning`（推理力度）、`conversation`、`instructions`、`includeUsage`。
 
-Use `previousResponseId` for multi-turn conversations:
+使用 `previousResponseId` 进行多轮对话：
 
 ```typescript
 const first = await generateText({
@@ -388,7 +388,7 @@ const second = await generateText({
 ```typescript
 import { embed, embedMany } from "ai";
 
-// Single text embedding
+// 单文本嵌入
 const { embedding, usage } = await embed({
   model: dashscope.embeddingModel("text-embedding-v4"),
   value: "The clothes quality is excellent",
@@ -396,14 +396,14 @@ const { embedding, usage } = await embed({
 
 console.log(embedding.length); // 1024 (default dimensions)
 
-// Batch embedding
+// 批量嵌入
 const { embeddings } = await embedMany({
   model: dashscope.embeddingModel("text-embedding-v4"),
   values: ["Hello world", "Machine learning is fascinating"],
 });
 ```
 
-### Custom Dimensions
+### 自定义维度
 
 ```typescript
 const { embedding } = await embed({
@@ -439,7 +439,7 @@ for (const item of ranking) {
 }
 ```
 
-### Top N Results
+### Top N 结果
 
 ```typescript
 const { ranking } = await rerank({
@@ -493,7 +493,7 @@ const { videos } = await generateVideo({
 
 ### Image-to-Video
 
-Use a model ID containing `-i2v` for image-to-video mode:
+使用包含 `-i2v` 的模型 ID 进入图生视频模式：
 
 ```typescript
 const { videos } = await generateVideo({
@@ -531,7 +531,7 @@ writeFileSync("output.wav", audio.uint8Array);
 
 ## Transcription (Speech-to-Text)
 
-### Short Audio (Sync)
+### 短音频（同步）
 
 ```typescript
 import { experimental_transcribe as transcribe } from "ai";
@@ -544,9 +544,9 @@ const { text } = await transcribe({
 console.log(text);
 ```
 
-### Long Audio (Async)
+### 长音频（异步）
 
-For async models, provide the audio URL via `providerOptions`:
+对于异步模型，通过 `providerOptions` 提供音频 URL：
 
 ```typescript
 const { text, segments } = await transcribe({
@@ -561,7 +561,7 @@ const { text, segments } = await transcribe({
 });
 ```
 
-## Provider Configuration
+## Provider 配置
 
 ```typescript
 import { createDashScope } from "@agentor/dashscope";

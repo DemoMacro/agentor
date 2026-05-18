@@ -1,17 +1,14 @@
 {
-  "name": "@agentor/chat-wecom",
-  "version": "0.0.4",
-  "description": "企业微信 (WeCom) Chat SDK 适配器，支持 Webhook 群机器人、智能机器人（回调 URL / WebSocket 长连接）和自建应用",
+  "name": "@agentor/server",
+  "version": "0.0.1",
+  "description": "AI API compatibility layer that exposes AI SDK providers as OpenAI / Anthropic compatible endpoints",
   "keywords": [
     "agentor",
-    "bot",
-    "chat-adapter",
-    "template-card",
-    "websocket",
-    "wechat-work",
-    "wecom",
-    "企业微信",
-    "群机器人"
+    "ai",
+    "anthropic",
+    "api-compat",
+    "openai",
+    "server"
   ],
   "homepage": "https://github.com/DemoMacro/agentor#readme",
   "bugs": {
@@ -45,6 +42,14 @@
     "prepack": "pnpm build"
   },
   "dependencies": {
-    "@chat-adapter/shared": "4.29.0"
+    "h3": "2.0.1-rc.22"
+  },
+  "devDependencies": {
+    "@agentor/dashscope": "workspace:*",
+    "@anthropic-ai/sdk": "0.96.0",
+    "openai": "6.38.0"
+  },
+  "peerDependencies": {
+    "ai": ">=6.0.0"
   }
 }
