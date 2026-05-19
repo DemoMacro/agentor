@@ -14,7 +14,12 @@ function setupServer() {
   return createServer({
     registry,
     handlers: [openaiHandler()],
-    models: ["dashscope:qwen3.5-flash", "dashscope:text-embedding-v3"],
+    models: [
+      "dashscope:qwen3.5-flash",
+      "dashscope:text-embedding-v3",
+      "dashscope:qwen3-rerank",
+      "dashscope:qwen-image-plus",
+    ],
   });
 }
 
@@ -468,6 +473,251 @@ async function testErrorMissingFields() {
   console.log("Error:", data.error);
 }
 
+// --- Responses (non-streaming) ---
+
+async function testResponses() {
+  console.log("\n=== Responses (non-streaming) ===");
+
+  const { app } = setupServer();
+
+  const response = await app.fetch(
+    new Request("http://localhost/v1/responses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "dashscope:qwen3.5-flash",
+        input: "Introduce yourself in one sentence.",
+        max_output_tokens: 100,
+      }),
+    }),
+  );
+
+  const data = await response.json();
+  console.log("Status:", response.status);
+  console.log("ID:", data.id);
+  console.log("Object:", data.object);
+  console.log("Status:", data.status);
+  console.log("Output text:", data.output_text);
+  console.log("Output items:", data.output?.length);
+  console.log("Usage:", data.usage);
+}
+
+// --- Responses (streaming) ---
+
+async function testResponsesStream() {
+  console.log("\n=== Responses (streaming) ===");
+
+  const { app } = setupServer();
+
+  const response = await app.fetch(
+    new Request("http://localhost/v1/responses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "dashscope:qwen3.5-flash",
+        input: "Say hello in three words.",
+        stream: true,
+      }),
+    }),
+  );
+
+  console.log("Status:", response.status);
+  console.log("Content-Type:", response.headers.get("content-type"));
+
+  const text = await response.text();
+  const chunks = text.split("\n\n").filter((line) => line.startsWith("data: "));
+  console.log("SSE chunks:", chunks.length);
+
+  const eventTypes = new Set<string>();
+  let outputText = "";
+
+  for (const chunk of chunks) {
+    const data = chunk.replace("data: ", "");
+    const parsed = JSON.parse(data);
+    if (parsed.type) eventTypes.add(parsed.type);
+    if (parsed.type === "response.output_text.delta") {
+      outputText += parsed.delta;
+    }
+  }
+
+  console.log("Event types:", [...eventTypes]);
+  console.log("Output text:", outputText);
+}
+
+// --- Responses with instructions and function call ---
+
+async function testResponsesToolCall() {
+  console.log("\n=== Responses with Tool Call ===");
+
+  const { app } = setupServer();
+
+  const response = await app.fetch(
+    new Request("http://localhost/v1/responses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "dashscope:qwen3.5-flash",
+        instructions: "You are a helpful weather assistant.",
+        input: "What is the weather in Beijing?",
+        tools: [
+          {
+            type: "function",
+            name: "get_weather",
+            description: "Get weather for a city",
+            parameters: {
+              type: "object",
+              properties: { city: { type: "string", description: "City name" } },
+              required: ["city"],
+            },
+          },
+        ],
+      }),
+    }),
+  );
+
+  const data = await response.json();
+  console.log("Status:", response.status);
+  console.log("Status:", data.status);
+  console.log("Instructions:", data.instructions);
+  console.log(
+    "Output types:",
+    data.output?.map((o: { type: string }) => o.type),
+  );
+  const fc = data.output?.find((o: { type: string }) => o.type === "function_call");
+  if (fc) {
+    console.log("Function:", fc.name, fc.arguments);
+  }
+}
+
+// --- Responses with message array input ---
+
+async function testResponsesMessages() {
+  console.log("\n=== Responses with Message Array Input ===");
+
+  const { app } = setupServer();
+
+  const response = await app.fetch(
+    new Request("http://localhost/v1/responses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "dashscope:qwen3.5-flash",
+        input: [
+          { role: "system", content: "Reply concisely." },
+          { role: "user", content: "What is 2 + 2?" },
+        ],
+      }),
+    }),
+  );
+
+  const data = await response.json();
+  console.log("Status:", response.status);
+  console.log("Output text:", data.output_text);
+}
+
+// --- Rerank ---
+
+async function testRerank() {
+  console.log("\n=== Rerank ===");
+
+  const { app } = setupServer();
+
+  const response = await app.fetch(
+    new Request("http://localhost/v1/rerank", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "dashscope:qwen3-rerank",
+        query: "What is a reranking model?",
+        documents: [
+          "Reranking models are widely used in search engines and recommendation systems",
+          "Quantum computing is a frontier field of computational science",
+          "Pre-trained language models have brought new advances to reranking models",
+        ],
+      }),
+    }),
+  );
+
+  const data = await response.json();
+  console.log("Status:", response.status);
+  console.log("ID:", data.id);
+  console.log("Model:", data.model);
+  console.log("Results:", data.results?.length);
+  for (const r of data.results ?? []) {
+    console.log(`  Index: ${r.index}, Score: ${r.relevance_score?.toFixed(4)}`);
+  }
+}
+
+// --- Rerank with top_n ---
+
+async function testRerankTopN() {
+  console.log("\n=== Rerank with TopN ===");
+
+  const { app } = setupServer();
+
+  const response = await app.fetch(
+    new Request("http://localhost/v1/rerank", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "dashscope:qwen3-rerank",
+        query: "How to reset password?",
+        documents: [
+          "Go to Settings > Security > Change Password",
+          "Forgot your password?",
+          "Platform supports two-factor authentication",
+          "Reset via email verification",
+        ],
+        top_n: 2,
+      }),
+    }),
+  );
+
+  const data = await response.json();
+  console.log("Status:", response.status);
+  console.log("Results:", data.results?.length);
+  for (const r of data.results ?? []) {
+    console.log(`  Index: ${r.index}, Score: ${r.relevance_score?.toFixed(4)}`);
+  }
+}
+
+// --- Image edits ---
+
+async function testImageEdits() {
+  console.log("\n=== Image Edits ===");
+
+  // Minimal 1x1 white PNG as base64 for testing
+  const testImageBase64 =
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
+
+  const { app } = setupServer();
+
+  const response = await app.fetch(
+    new Request("http://localhost/v1/images/edits", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "dashscope:qwen-image-plus",
+        prompt: "Replace the image with a cute cat",
+        image: testImageBase64,
+        n: 1,
+        response_format: "b64_json",
+      }),
+    }),
+  );
+
+  const data = await response.json();
+  console.log("Status:", response.status);
+  console.log("Created:", data.created);
+  console.log("Images:", data.data?.length);
+  if (data.data?.[0]?.b64_json) {
+    console.log("Base64 length:", data.data[0].b64_json.length);
+  }
+  if (data.error) {
+    console.log("Error:", data.error);
+  }
+}
+
 // --- Run ---
 
 async function main() {
@@ -488,8 +738,15 @@ async function main() {
     await testSystemMessages();
     await testEmbeddings();
     await testImageGenerations();
+    await testImageEdits();
     await testAudioSpeech();
     await testAudioTranscriptions();
+    await testResponses();
+    await testResponsesStream();
+    await testResponsesToolCall();
+    await testResponsesMessages();
+    await testRerank();
+    await testRerankTopN();
     await testModels();
     await testErrorMissingFields();
   } catch (error) {

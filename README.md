@@ -7,10 +7,36 @@
 
 ## Packages
 
+- **[@agentor/server](./packages/server/README.md)** - AI API compatibility layer (OpenAI / Anthropic compatible endpoints)
 - **[@agentor/dashscope](./packages/dashscope/README.md)** - Alibaba Cloud DashScope (Bailian) API provider
 - **[@agentor/chat-wecom](./packages/chat-wecom/README.md)** - WeChat Work (企业微信) Chat SDK adapter
 
 ## Quick Start
+
+### Server
+
+```bash
+# Install with pnpm
+$ pnpm add @agentor/server
+```
+
+```typescript
+import { createServer, openaiHandler, anthropicHandler } from "@agentor/server";
+import { createDashScope } from "@agentor/dashscope";
+import { createProviderRegistry } from "ai";
+
+const dashscope = createDashScope({ apiKey: process.env.DASHSCOPE_API_KEY });
+
+const server = createServer({
+  registry: createProviderRegistry({ dashscope }),
+  handlers: [openaiHandler(), anthropicHandler()],
+});
+
+server.listen(3000);
+// POST /v1/chat/completions  → OpenAI compatible
+// POST /v1/messages          → Anthropic compatible
+// GET  /v1/models            → Model list
+```
 
 ### DashScope
 
@@ -149,6 +175,7 @@ We welcome contributions! Here's how to get started:
 ## Support & Community
 
 - 📫 [Report Issues](https://github.com/DemoMacro/agentor/issues)
+- 📚 [Server Documentation](./packages/server/README.md)
 - 📚 [DashScope Documentation](./packages/dashscope/README.md)
 - 📚 [Chat WeCom Documentation](./packages/chat-wecom/README.md)
 

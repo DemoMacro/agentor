@@ -8,10 +8,10 @@
 
 ## Features
 
-- **OpenAI Compatible** - `/v1/chat/completions`, `/v1/embeddings`, `/v1/models`
-- **Anthropic Compatible** - `/v1/messages`, `/v1/models`
+- **OpenAI Compatible** - Chat Completions, Responses, Completions, Embeddings, Images, Image Edits, Speech, Transcriptions, Rerank, Models
+- **Anthropic Compatible** - Messages, Models
 - **Streaming Support** - SSE streaming for both OpenAI and Anthropic formats
-- **Tool Calling** - Function calling support for chat completions and messages
+- **Tool Calling** - Function calling support for chat completions, messages, and responses
 - **Multi-Provider** - Works with any AI SDK provider via `createProviderRegistry`
 - **Handler Pattern** - Pluggable handler architecture (like unstorage drivers)
 - **TypeScript-First** - Full type safety with official SDK types from `openai` and `@anthropic-ai/sdk`
@@ -117,11 +117,18 @@ for await (const event of stream) {
 
 ### OpenAI Handler
 
-| Endpoint               | Method | Description                           |
-| ---------------------- | ------ | ------------------------------------- |
-| `/v1/chat/completions` | POST   | Chat completion (stream + non-stream) |
-| `/v1/embeddings`       | POST   | Text embeddings                       |
-| `/v1/models`           | GET    | List available models                 |
+| Endpoint                   | Method | Description                           |
+| -------------------------- | ------ | ------------------------------------- |
+| `/v1/chat/completions`     | POST   | Chat completion (stream + non-stream) |
+| `/v1/responses`            | POST   | Responses API (stream + non-stream)   |
+| `/v1/completions`          | POST   | Legacy completions                    |
+| `/v1/embeddings`           | POST   | Text embeddings                       |
+| `/v1/images/generations`   | POST   | Image generation                      |
+| `/v1/images/edits`         | POST   | Image editing                         |
+| `/v1/audio/speech`         | POST   | Text-to-speech                        |
+| `/v1/audio/transcriptions` | POST   | Speech-to-text                        |
+| `/v1/rerank`               | POST   | Document reranking                    |
+| `/v1/models`               | GET    | List available models                 |
 
 ### Anthropic Handler
 

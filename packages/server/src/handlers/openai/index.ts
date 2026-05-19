@@ -8,6 +8,8 @@ import { registerEmbeddings } from "./embeddings";
 import { registerImageEdits } from "./image-edits";
 import { registerImages } from "./images";
 import { registerModels } from "./models";
+import { registerRerank } from "./rerank";
+import { registerResponses } from "./responses";
 import { registerSpeech } from "./speech";
 import { registerTranscriptions } from "./transcriptions";
 
@@ -31,6 +33,8 @@ const handler: HandlerFactory<OpenAIHandlerOptions> = () => ({
     registerImageEdits(app, context);
     registerImages(app, context);
     registerModels(app, context);
+    registerRerank(app, context);
+    registerResponses(app, context);
     registerSpeech(app, context);
     registerTranscriptions(app, context);
   },
