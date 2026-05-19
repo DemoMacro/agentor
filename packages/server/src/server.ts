@@ -1,4 +1,5 @@
 import { H3, HTTPError, onError, serve } from "h3";
+import { createStorage } from "unstorage";
 
 import type { ServerContext, ServerOptions } from "./types";
 
@@ -13,11 +14,13 @@ export function createServer(options: ServerOptions): ServerInstance {
     registry: options.registry,
     models: options.models,
     fetch: options.fetch,
+    storage: options.storage ?? createStorage(),
   };
 
   app.use(
-    onError((error) => {
+    onError((error, event) => {
       if (error instanceof HTTPError) {
+        event.res.status = error.status;
         const data = error.data as Record<string, unknown> | undefined;
         const errorType = (data?.errorType as string) ?? "invalid_request_error";
 
@@ -32,6 +35,7 @@ export function createServer(options: ServerOptions): ServerInstance {
           error: { message: error.message, type: errorType },
         };
       }
+      event.res.status = 500;
       const err = error as unknown;
       return {
         error: {

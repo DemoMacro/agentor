@@ -1,5 +1,6 @@
 import type { createProviderRegistry } from "ai";
 import type { H3 } from "h3";
+import type { Storage } from "unstorage";
 
 export type ProviderRegistry = ReturnType<typeof createProviderRegistry>;
 
@@ -14,6 +15,7 @@ export interface ServerContext {
   registry: ProviderRegistry;
   models?: Array<string | ServerModel>;
   fetch?: typeof globalThis.fetch;
+  storage?: Storage;
 }
 
 export interface Handler {
@@ -27,4 +29,5 @@ export interface ServerOptions {
   handlers: Handler[];
   models?: Array<string | ServerModel>;
   fetch?: typeof globalThis.fetch;
+  storage?: Storage;
 }

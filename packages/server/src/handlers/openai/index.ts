@@ -2,9 +2,11 @@ import type { H3 } from "h3";
 
 import type { ServerContext } from "../../types";
 import { type HandlerFactory } from "../../utils";
+import { registerBatches } from "./batches";
 import { registerChatCompletions } from "./chat-completions";
 import { registerCompletions } from "./completions";
 import { registerEmbeddings } from "./embeddings";
+import { registerFiles } from "./files";
 import { registerImageEdits } from "./image-edits";
 import { registerImages } from "./images";
 import { registerModels } from "./models";
@@ -28,9 +30,11 @@ const handler: HandlerFactory<OpenAIHandlerOptions> = () => ({
   name: "openai",
   path: "/v1",
   register(app: H3, context: ServerContext) {
+    registerBatches(app, context);
     registerChatCompletions(app, context);
     registerCompletions(app, context);
     registerEmbeddings(app, context);
+    registerFiles(app, context);
     registerImageEdits(app, context);
     registerImages(app, context);
     registerModels(app, context);

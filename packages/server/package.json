@@ -1,6 +1,6 @@
 {
   "name": "@agentor/server",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "AI API compatibility layer that exposes AI SDK providers as OpenAI / Anthropic compatible endpoints",
   "keywords": [
     "agentor",
@@ -42,7 +42,8 @@
     "prepack": "pnpm build"
   },
   "dependencies": {
-    "h3": "2.0.1-rc.22"
+    "h3": "2.0.1-rc.22",
+    "unstorage": "2.0.0-alpha.7"
   },
   "devDependencies": {
     "@agentor/dashscope": "workspace:*",

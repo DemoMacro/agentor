@@ -8,11 +8,13 @@
 
 ## Features
 
-- **OpenAI Compatible** - Chat Completions, Responses, Completions, Embeddings, Images, Image Edits, Speech, Transcriptions, Rerank, Models
-- **Anthropic Compatible** - Messages, Models
+- **OpenAI Compatible** - Chat Completions, Responses, Completions, Embeddings, Images, Image Edits, Speech, Transcriptions, Rerank, Files, Batches, Models
+- **Anthropic Compatible** - Messages, Message Batches, Models
 - **Streaming Support** - SSE streaming for both OpenAI and Anthropic formats
 - **Tool Calling** - Function calling support for chat completions, messages, and responses
 - **Multi-Provider** - Works with any AI SDK provider via `createProviderRegistry`
+- **Batch Processing** - OpenAI Batches and Anthropic Message Batches with async processing
+- **File Management** - Upload, list, retrieve, and delete files via OpenAI Files API
 - **Handler Pattern** - Pluggable handler architecture (like unstorage drivers)
 - **TypeScript-First** - Full type safety with official SDK types from `openai` and `@anthropic-ai/sdk`
 
@@ -129,14 +131,29 @@ for await (const event of stream) {
 | `/v1/audio/transcriptions` | POST   | Speech-to-text                        |
 | `/v1/audio/translations`   | POST   | Audio translation                     |
 | `/v1/rerank`               | POST   | Document reranking                    |
+| `/v1/files`                | POST   | Upload file                           |
+| `/v1/files`                | GET    | List files                            |
+| `/v1/files/:id`            | GET    | Retrieve file metadata                |
+| `/v1/files/:id/content`    | GET    | Download file content                 |
+| `/v1/files/:id`            | DELETE | Delete file                           |
+| `/v1/batches`              | POST   | Create batch                          |
+| `/v1/batches`              | GET    | List batches                          |
+| `/v1/batches/:id`          | GET    | Retrieve batch status                 |
+| `/v1/batches/:id/cancel`   | POST   | Cancel batch                          |
 | `/v1/models`               | GET    | List available models                 |
 
 ### Anthropic Handler
 
-| Endpoint       | Method | Description                            |
-| -------------- | ------ | -------------------------------------- |
-| `/v1/messages` | POST   | Message creation (stream + non-stream) |
-| `/v1/models`   | GET    | List available models                  |
+| Endpoint                           | Method | Description                            |
+| ---------------------------------- | ------ | -------------------------------------- |
+| `/v1/messages`                     | POST   | Message creation (stream + non-stream) |
+| `/v1/messages/batches`             | POST   | Create message batch                   |
+| `/v1/messages/batches`             | GET    | List message batches                   |
+| `/v1/messages/batches/:id`         | GET    | Retrieve message batch status          |
+| `/v1/messages/batches/:id/cancel`  | POST   | Cancel message batch                   |
+| `/v1/messages/batches/:id`         | DELETE | Delete message batch                   |
+| `/v1/messages/batches/:id/results` | GET    | Get message batch results (JSONL)      |
+| `/v1/models`                       | GET    | List available models                  |
 
 ## Models Configuration
 
