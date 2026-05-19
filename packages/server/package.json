@@ -1,6 +1,6 @@
 {
   "name": "@agentor/server",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "AI API compatibility layer that exposes AI SDK providers as OpenAI / Anthropic compatible endpoints",
   "keywords": [
     "agentor",

@@ -127,6 +127,7 @@ for await (const event of stream) {
 | `/v1/images/edits`         | POST   | Image editing                         |
 | `/v1/audio/speech`         | POST   | Text-to-speech                        |
 | `/v1/audio/transcriptions` | POST   | Speech-to-text                        |
+| `/v1/audio/translations`   | POST   | Audio translation                     |
 | `/v1/rerank`               | POST   | Document reranking                    |
 | `/v1/models`               | GET    | List available models                 |
 

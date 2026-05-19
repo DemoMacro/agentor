@@ -718,6 +718,33 @@ async function testImageEdits() {
   }
 }
 
+// --- Audio translations ---
+
+async function testAudioTranslations() {
+  console.log("\n=== Audio Translations ===");
+
+  const { app } = setupServer();
+
+  const response = await app.fetch(
+    new Request("http://localhost/v1/audio/translations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "dashscope:qwen3-asr-flash-filetrans",
+        providerOptions: {
+          dashscope: {
+            fileUrl: "https://dashscope.oss-cn-beijing.aliyuncs.com/samples/audio/test.wav",
+          },
+        },
+      }),
+    }),
+  );
+
+  const data = await response.json();
+  console.log("Status:", response.status);
+  console.log("Text:", data.text);
+}
+
 // --- Run ---
 
 async function main() {
@@ -741,6 +768,7 @@ async function main() {
     await testImageEdits();
     await testAudioSpeech();
     await testAudioTranscriptions();
+    await testAudioTranslations();
     await testResponses();
     await testResponsesStream();
     await testResponsesToolCall();

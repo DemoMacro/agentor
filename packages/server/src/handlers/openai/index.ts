@@ -12,6 +12,7 @@ import { registerRerank } from "./rerank";
 import { registerResponses } from "./responses";
 import { registerSpeech } from "./speech";
 import { registerTranscriptions } from "./transcriptions";
+import { registerTranslations } from "./translations";
 
 export type {
   convertMessages,
@@ -37,6 +38,7 @@ const handler: HandlerFactory<OpenAIHandlerOptions> = () => ({
     registerResponses(app, context);
     registerSpeech(app, context);
     registerTranscriptions(app, context);
+    registerTranslations(app, context);
   },
 });
 
