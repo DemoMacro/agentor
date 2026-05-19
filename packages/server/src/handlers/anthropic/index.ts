@@ -1,7 +1,7 @@
 import type { H3 } from "h3";
 
 import type { ServerContext } from "../../types";
-import { type HandlerFactory } from "../utils";
+import { type HandlerFactory } from "../../utils";
 import { registerMessages } from "./messages";
 import { registerModels } from "./models";
 

@@ -1,10 +1,11 @@
 import type { H3 } from "h3";
 
 import type { ServerContext } from "../../types";
-import { type HandlerFactory } from "../utils";
+import { type HandlerFactory } from "../../utils";
 import { registerChatCompletions } from "./chat-completions";
 import { registerCompletions } from "./completions";
 import { registerEmbeddings } from "./embeddings";
+import { registerImageEdits } from "./image-edits";
 import { registerImages } from "./images";
 import { registerModels } from "./models";
 import { registerSpeech } from "./speech";
@@ -16,7 +17,7 @@ export type {
   convertUsage,
   buildCompletion,
   buildChunk,
-} from "./chat-completions";
+} from "../../utils";
 
 export interface OpenAIHandlerOptions {}
 
@@ -27,6 +28,7 @@ const handler: HandlerFactory<OpenAIHandlerOptions> = () => ({
     registerChatCompletions(app, context);
     registerCompletions(app, context);
     registerEmbeddings(app, context);
+    registerImageEdits(app, context);
     registerImages(app, context);
     registerModels(app, context);
     registerSpeech(app, context);

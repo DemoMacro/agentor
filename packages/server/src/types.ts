@@ -16,7 +16,7 @@ export interface ServerContext {
   fetch?: typeof globalThis.fetch;
 }
 
-export interface Handler<OptionsT = any> {
+export interface Handler {
   name: string;
   path: string;
   register(app: H3, context: ServerContext): void;
