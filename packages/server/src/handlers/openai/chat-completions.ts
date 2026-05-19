@@ -169,11 +169,12 @@ export function buildCompletion(
   text: string,
   finishReason: string | undefined,
   usage?: LanguageModelUsage,
+  timestamp?: Date,
 ): ChatCompletion {
   return {
     id,
     object: "chat.completion" as const,
-    created: Math.floor(Date.now() / 1000),
+    created: Math.floor((timestamp ?? new Date()).getTime() / 1000),
     model,
     choices: [
       {
@@ -317,11 +318,12 @@ export function registerChatCompletions(app: H3, context: ServerContext) {
 
         const result = await generateText({ model, messages, ...params, providerOptions });
         return buildCompletion(
-          generateId("chatcmpl"),
-          body.model,
+          result.response.id ?? generateId("chatcmpl"),
+          result.response.modelId ?? body.model,
           result.text,
           result.finishReason,
           result.usage,
+          result.response.timestamp,
         );
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);

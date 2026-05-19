@@ -122,6 +122,115 @@ async function testEmbeddings() {
   console.log("Usage:", data.usage);
 }
 
+// --- Completions (legacy) ---
+
+async function testCompletions() {
+  console.log("\n=== Completions (legacy) ===");
+
+  const { app } = setupServer();
+
+  const response = await app.fetch(
+    new Request("http://localhost/v1/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "dashscope:qwen3.5-flash",
+        prompt: "The capital of China is",
+        max_tokens: 20,
+        temperature: 0,
+      }),
+    }),
+  );
+
+  const data = await response.json();
+  console.log("Status:", response.status);
+  console.log("ID:", data.id);
+  console.log("Object:", data.object);
+  console.log("Text:", data.choices?.[0]?.text);
+  console.log("Finish reason:", data.choices?.[0]?.finish_reason);
+  console.log("Usage:", data.usage);
+}
+
+// --- Image generation ---
+
+async function testImageGenerations() {
+  console.log("\n=== Image Generations ===");
+
+  const { app } = setupServer();
+
+  const response = await app.fetch(
+    new Request("http://localhost/v1/images/generations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "dashscope:qwen-image-plus",
+        prompt: "A cute cat sitting on a windowsill",
+        n: 1,
+        response_format: "b64_json",
+      }),
+    }),
+  );
+
+  const data = await response.json();
+  console.log("Status:", response.status);
+  console.log("Created:", data.created);
+  console.log("Images:", data.data?.length);
+  if (data.data?.[0]?.b64_json) {
+    console.log("Base64 length:", data.data[0].b64_json.length);
+  }
+}
+
+// --- Audio speech (TTS) ---
+
+async function testAudioSpeech() {
+  console.log("\n=== Audio Speech (TTS) ===");
+
+  const { app } = setupServer();
+
+  const response = await app.fetch(
+    new Request("http://localhost/v1/audio/speech", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "dashscope:cosyvoice-v3-flash",
+        input: "Hello, welcome to Agentor.",
+      }),
+    }),
+  );
+
+  console.log("Status:", response.status);
+  console.log("Content-Type:", response.headers.get("content-type"));
+  const buffer = await response.arrayBuffer();
+  console.log("Audio size:", buffer.byteLength, "bytes");
+}
+
+// --- Audio transcriptions (STT) ---
+
+async function testAudioTranscriptions() {
+  console.log("\n=== Audio Transcriptions (STT) ===");
+
+  const { app } = setupServer();
+
+  const response = await app.fetch(
+    new Request("http://localhost/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "dashscope:qwen3-asr-flash-filetrans",
+        providerOptions: {
+          dashscope: {
+            fileUrl: "https://dashscope.oss-cn-beijing.aliyuncs.com/samples/audio/test.wav",
+          },
+        },
+      }),
+    }),
+  );
+
+  const data = await response.json();
+  console.log("Status:", response.status);
+  console.log("Text:", data.text);
+}
+
 // --- Chat with tool calling (non-streaming) ---
 
 async function testToolCall() {
@@ -284,44 +393,6 @@ async function testEnableSearch() {
   console.log("Usage:", data.usage);
 }
 
-// --- Chat with enableSearch (streaming) ---
-
-async function testEnableSearchStream() {
-  console.log("\n=== Chat with enableSearch (streaming) ===");
-
-  const { app } = setupServer();
-
-  const response = await app.fetch(
-    new Request("http://localhost/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "dashscope:qwen3.5-flash",
-        messages: [{ role: "user", content: "杭州明天天气如何" }],
-        stream: true,
-        providerOptions: {
-          dashscope: {
-            enableSearch: true,
-          },
-        },
-      }),
-    }),
-  );
-
-  const text = await response.text();
-  const chunks = text.split("\n\n").filter((line) => line.startsWith("data: "));
-  console.log("SSE chunks:", chunks.length);
-
-  for (const chunk of chunks) {
-    const data = chunk.replace("data: ", "");
-    if (data === "[DONE]") continue;
-    const parsed = JSON.parse(data);
-    const content = parsed.choices?.[0]?.delta?.content;
-    if (content) process.stdout.write(content);
-  }
-  console.log();
-}
-
 // --- Parameters: max_tokens, temperature, stop ---
 
 async function testParams() {
@@ -408,14 +479,17 @@ async function main() {
   try {
     await testChatCompletion();
     await testChatCompletionStream();
+    await testCompletions();
     await testToolCall();
     await testToolCallStream();
     await testToolResult();
     await testEnableSearch();
-    await testEnableSearchStream();
     await testParams();
     await testSystemMessages();
     await testEmbeddings();
+    await testImageGenerations();
+    await testAudioSpeech();
+    await testAudioTranscriptions();
     await testModels();
     await testErrorMissingFields();
   } catch (error) {

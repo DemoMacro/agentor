@@ -32,7 +32,11 @@ export function registerEmbeddings(app: H3, context: ServerContext) {
         let totalTokens = 0;
 
         for (const [index, input] of inputs.entries()) {
-          const result = await embed({ model, value: input });
+          const result = await embed({
+            model,
+            value: input,
+            providerOptions: body.providerOptions as Parameters<typeof embed>[0]["providerOptions"],
+          });
           data.push({
             object: "embedding",
             index,
