@@ -14,4 +14,7 @@ export default defineConfig({
       typeCheck: true,
     },
   },
+  staged: {
+    "*": "pnpm vp check --fix",
+  },
 });

@@ -1,6 +1,6 @@
 {
   "name": "@agentor/monorepo",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "private": true,
   "description": "A toolkit for building AI agents",
   "keywords": [
@@ -30,12 +30,12 @@
     "bump": "pnpm --filter \"./packages/**\" -r exec basis version",
     "prerelease": "pnpm --filter \"./packages/**\" -r exec basis version --prerelease",
     "publish": "pnpm --filter \"./packages/**\" -r exec basis publish",
-    "postinstall": "pnpm dev && basis git setup"
+    "postinstall": "pnpm dev && vp config && basis git setup"
   },
   "devDependencies": {
-    "@funish/basis": "0.2.17",
-    "@types/node": "25.9.0",
-    "ai": "6.0.184",
+    "@funish/basis": "0.3.0",
+    "@types/node": "25.9.1",
+    "ai": "6.0.185",
     "chat": "4.29.0",
     "h3": "2.0.1-rc.22",
     "vite-plus": "0.1.21"

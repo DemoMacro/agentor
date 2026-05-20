@@ -38,7 +38,7 @@
   },
   "scripts": {
     "dev": "basis build --stub",
-    "build": "basis build",
+    "build": "vp pack",
     "prepack": "pnpm build"
   },
   "dependencies": {
@@ -47,7 +47,7 @@
   },
   "devDependencies": {
     "@agentor/dashscope": "workspace:*",
-    "@anthropic-ai/sdk": "0.96.0",
+    "@anthropic-ai/sdk": "0.97.1",
     "openai": "6.38.0"
   },
   "peerDependencies": {
