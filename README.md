@@ -9,7 +9,8 @@
 
 - **[@agentor/server](./packages/server/README.md)** - AI API compatibility layer (OpenAI / Anthropic compatible endpoints)
 - **[@agentor/dashscope](./packages/dashscope/README.md)** - Alibaba Cloud DashScope (Bailian) API provider
-- **[@agentor/chat-wecom](./packages/chat-wecom/README.md)** - WeChat Work (企业微信) Chat SDK adapter
+- **[@agentor/chat-wecom](./packages/chat-wecom/README.md)** - 企业微信 (WeCom) Chat SDK adapter
+- **[@agentor/chat-qq](./packages/chat-qq/README.md)** - QQ Bot Chat SDK adapter
 
 ## Quick Start
 
@@ -87,6 +88,30 @@ const adapter = createWeComWebhookAdapter({
 
 const threadId = adapter.encodeThreadId({ key: process.env.WECOM_WEBHOOK_KEY! });
 const result = await adapter.postMessage(threadId, "Hello from Agentor!");
+```
+
+### Chat QQ
+
+```bash
+# Install with pnpm
+$ pnpm add @agentor/chat-qq
+```
+
+```typescript
+import { createQQBotAdapter } from "@agentor/chat-qq";
+
+const adapter = createQQBotAdapter({
+  mode: "websocket",
+  appId: process.env.QQ_BOT_APP_ID!,
+  clientSecret: process.env.QQ_BOT_CLIENT_SECRET!,
+});
+
+await adapter.initialize({
+  processMessage: async (_adapter, threadId, factory) => {
+    const message = await factory();
+    await adapter.postMessage(threadId, message.text);
+  },
+});
 ```
 
 ## Development
@@ -178,6 +203,7 @@ We welcome contributions! Here's how to get started:
 - 📚 [Server Documentation](./packages/server/README.md)
 - 📚 [DashScope Documentation](./packages/dashscope/README.md)
 - 📚 [Chat WeCom Documentation](./packages/chat-wecom/README.md)
+- 📚 [Chat QQ Documentation](./packages/chat-qq/README.md)
 
 ## License
 
