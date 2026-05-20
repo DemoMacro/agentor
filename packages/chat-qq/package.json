@@ -1,0 +1,48 @@
+{
+  "name": "@agentor/chat-qq",
+  "version": "0.0.1",
+  "description": "QQ Bot 官方 API 适配器，支持 WebSocket 长连接和 Webhook 回调两种模式",
+  "keywords": [
+    "QQ机器人",
+    "agentor",
+    "bot",
+    "chat-adapter",
+    "qq",
+    "qqbot",
+    "websocket"
+  ],
+  "homepage": "https://github.com/DemoMacro/agentor#readme",
+  "bugs": {
+    "url": "https://github.com/DemoMacro/agentor/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Demo Macro",
+    "email": "abc@imst.xyz",
+    "url": "https://www.demomacro.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DemoMacro/agentor.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "dev": "basis build --stub",
+    "build": "vp pack",
+    "prepack": "pnpm build"
+  },
+  "dependencies": {
+    "@chat-adapter/shared": "4.29.0"
+  }
+}
