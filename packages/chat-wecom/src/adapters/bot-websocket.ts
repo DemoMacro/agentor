@@ -393,11 +393,12 @@ export class WeComBotWebSocketAdapter implements Adapter<WeComBotThreadId, BotRa
 
   parseMessage(raw: WsBotCallbackBody): Message<BotRawMessage> {
     const chatId = raw.chatid ?? raw.from.userid;
+    const text = raw.text?.content ?? raw.voice?.content ?? "";
     return new Message({
       id: raw.msgid,
       threadId: this.encodeThreadId({ chatId }),
-      text: raw.text?.content ?? "",
-      formatted: this.formatConverter.toAst(raw.text?.content ?? ""),
+      text,
+      formatted: this.formatConverter.toAst(text),
       raw,
       author: {
         userId: raw.from.userid,
@@ -426,30 +427,24 @@ function parseBotAttachments(raw: WsBotCallbackBody): Attachment[] {
     attachments.push({
       type: "image",
       url: raw.image.url,
-      fetchMetadata: { aeskey: raw.image.aeskey },
+      ...(raw.image.aeskey ? { fetchMetadata: { aeskey: raw.image.aeskey } } : {}),
     });
   }
-  if (raw.voice) {
-    attachments.push({
-      type: "audio",
-      url: raw.voice.url,
-      fetchMetadata: { aeskey: raw.voice.aeskey },
-    });
-  }
+  // voice 只提供转录文本 (voice.content)，不含音频 URL，不创建 attachment
   if (raw.file) {
     attachments.push({
       type: "file",
       url: raw.file.url,
       name: raw.file.filename,
       size: raw.file.filesize,
-      fetchMetadata: { aeskey: raw.file.aeskey },
+      ...(raw.file.aeskey ? { fetchMetadata: { aeskey: raw.file.aeskey } } : {}),
     });
   }
   if (raw.video) {
     attachments.push({
       type: "video",
       url: raw.video.url,
-      fetchMetadata: { aeskey: raw.video.aeskey },
+      ...(raw.video.aeskey ? { fetchMetadata: { aeskey: raw.video.aeskey } } : {}),
     });
   }
   return attachments;

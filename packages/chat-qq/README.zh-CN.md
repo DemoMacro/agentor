@@ -18,6 +18,74 @@
 
 > **注意：** 成功配置 HTTPS 回调地址之后，WebSocket 长连接模式将不再支持，两者互斥。
 
+## 安装
+
+```bash
+# Install with npm
+npm install @agentor/chat-qq
+
+# Install with yarn
+yarn add @agentor/chat-qq
+
+# Install with pnpm
+pnpm add @agentor/chat-qq
+```
+
+## 快速开始
+
+### WebSocket 长连接模式
+
+通过 WebSocket 直连 QQ Bot 服务，无需公网端点：
+
+```typescript
+import { createQQBotAdapter } from "@agentor/chat-qq";
+
+const adapter = createQQBotAdapter({
+  appId: process.env.QQ_BOT_APP_ID!,
+  clientSecret: process.env.QQ_BOT_CLIENT_SECRET!,
+});
+
+await adapter.initialize({
+  processMessage: async (_adapter, threadId, factory) => {
+    const message = await factory();
+    await adapter.postMessage(threadId, message.text);
+  },
+});
+
+// 断开连接
+await adapter.disconnect();
+```
+
+### Webhook 回调模式
+
+通过 HTTP 回调接收和回复消息，需要公网可达的端点：
+
+```typescript
+import { createQQBotAdapter } from "@agentor/chat-qq";
+import { H3, fromWebHandler, serve } from "h3";
+
+const adapter = createQQBotAdapter({
+  mode: "callback",
+  appId: process.env.QQ_BOT_APP_ID!,
+  clientSecret: process.env.QQ_BOT_CLIENT_SECRET!,
+});
+
+await adapter.initialize({
+  processMessage: async (_adapter, threadId, factory) => {
+    const message = await factory();
+    await adapter.postMessage(threadId, message.text);
+  },
+});
+
+// 在 HTTP 服务器中处理回调
+const app = new H3();
+app.all(
+  "/webhook",
+  fromWebHandler((req) => adapter.handleWebhook(req)),
+);
+serve(app, { port: 3000 });
+```
+
 ## 环境变量
 
 | 变量名                 | 必填 | 说明              |
@@ -46,65 +114,6 @@
 3. WebSocket 模式：无需额外配置，直接连接
 4. Webhook 模式：在应用详情中配置 HTTPS 回调地址
    - 配置回调地址后，WebSocket 模式将不再可用（两者互斥）
-
-```bash
-pnpm add @agentor/chat-qq
-```
-
-## 快速开始
-
-### WebSocket 长连接模式
-
-通过 WebSocket 直连 QQ Bot 服务，无需公网端点：
-
-```typescript
-import { createQQBotAdapter } from "@agentor/chat-qq";
-
-const adapter = createQQBotAdapter({
-  mode: "websocket",
-  appId: process.env.QQ_BOT_APP_ID!,
-  clientSecret: process.env.QQ_BOT_CLIENT_SECRET!,
-});
-
-await adapter.initialize({
-  processMessage: async (_adapter, threadId, factory) => {
-    const message = await factory();
-    await adapter.postMessage(threadId, message.text);
-  },
-});
-
-// 断开连接
-await adapter.disconnect();
-```
-
-### Webhook 回调模式
-
-通过 HTTP 回调接收和回复消息，需要公网可达的端点：
-
-```typescript
-import { createQQBotAdapter } from "@agentor/chat-qq";
-import { H3, fromWebHandler, serve } from "h3";
-
-const adapter = createQQBotAdapter({
-  appId: process.env.QQ_BOT_APP_ID!,
-  clientSecret: process.env.QQ_BOT_CLIENT_SECRET!,
-});
-
-await adapter.initialize({
-  processMessage: async (_adapter, threadId, factory) => {
-    const message = await factory();
-    await adapter.postMessage(threadId, message.text);
-  },
-});
-
-// 在 HTTP 服务器中处理回调
-const app = new H3();
-app.all(
-  "/webhook",
-  fromWebHandler((req) => adapter.handleWebhook(req)),
-);
-serve(app, { port: 3000 });
-```
 
 ## 消息类型支持
 

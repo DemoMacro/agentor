@@ -39,14 +39,14 @@
   "op": 0,
   "t": "C2C_MESSAGE_CREATE",
   "id": "evt_001",
+  "s": 1,
   "d": {
     "id": "msg_abc123",
     "author": {
       "user_openid": "OPENID_USER001"
     },
     "content": "你好",
-    "timestamp": "1700000000",
-    "attachments": []
+    "timestamp": "2023-11-06T13:37:18+08:00"
   }
 }
 ```
@@ -58,13 +58,14 @@
   "op": 0,
   "t": "C2C_MESSAGE_CREATE",
   "id": "evt_002",
+  "s": 2,
   "d": {
     "id": "msg_def456",
     "author": {
       "user_openid": "OPENID_USER001"
     },
     "content": " ",
-    "timestamp": "1700000001",
+    "timestamp": "2023-11-06T13:37:19+08:00",
     "attachments": [
       {
         "content_type": "image/jpeg",
@@ -86,6 +87,7 @@
   "op": 0,
   "t": "GROUP_AT_MESSAGE_CREATE",
   "id": "evt_003",
+  "s": 3,
   "d": {
     "id": "msg_ghi789",
     "author": {
@@ -93,8 +95,7 @@
     },
     "content": "帮我查一下",
     "group_openid": "OPENID_GROUP001",
-    "timestamp": "1700000002",
-    "attachments": []
+    "timestamp": "2023-11-06T13:37:20+08:00"
   }
 }
 ```
@@ -106,17 +107,23 @@
   "op": 0,
   "t": "AT_MESSAGE_CREATE",
   "id": "evt_004",
+  "s": 4,
   "d": {
     "id": "msg_jkl012",
     "author": {
-      "user_openid": "OPENID_USER002",
       "id": "uid_002",
-      "username": "测试用户"
+      "username": "测试用户",
+      "bot": false
     },
     "content": "@bot help",
     "channel_id": "channel_001",
     "guild_id": "guild_001",
-    "timestamp": "1700000003",
+    "timestamp": "2021-05-20T15:14:58+08:00",
+    "seq": 101,
+    "member": {
+      "joined_at": "2021-04-12T16:34:42+08:00",
+      "roles": ["1"]
+    },
     "attachments": [],
     "mentions": [
       {
@@ -135,17 +142,22 @@
   "op": 0,
   "t": "DIRECT_MESSAGE_CREATE",
   "id": "evt_005",
+  "s": 5,
   "d": {
     "id": "msg_mno345",
     "author": {
       "id": "uid_003",
-      "username": "私信用户"
+      "username": "私信用户",
+      "bot": false
     },
     "content": "私聊内容",
     "channel_id": "dm_channel_001",
     "guild_id": "guild_001",
-    "timestamp": "1700000004",
-    "attachments": []
+    "timestamp": "2021-05-20T15:14:58+08:00",
+    "member": {
+      "joined_at": "2021-04-12T16:34:42+08:00",
+      "roles": ["1"]
+    }
   }
 }
 ```

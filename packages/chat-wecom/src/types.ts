@@ -246,13 +246,15 @@ export interface WsBotCallbackBody {
   from: { userid: string; corpid?: string };
   create_time?: number;
   response_url?: string;
-  msgtype: "text" | "image" | "mixed" | "voice" | "file" | "video" | "event";
+  msgtype: "text" | "image" | "mixed" | "voice" | "file" | "video" | "event" | "stream";
   text?: { content: string };
-  image?: { url: string; aeskey: string };
-  voice?: { url: string; aeskey: string };
-  file?: { url: string; aeskey: string; filename?: string; filesize?: number };
-  video?: { url: string; aeskey: string };
-  event?: { eventtype: string };
+  image?: { url: string; aeskey?: string };
+  voice?: { content: string };
+  file?: { url: string; aeskey?: string; filename?: string; filesize?: number };
+  video?: { url: string; aeskey?: string };
+  mixed?: { msg_item: Array<{ msgtype: string; [key: string]: unknown }> };
+  stream?: { id: string };
+  event?: { eventtype: string; [key: string]: unknown };
 }
 
 // --- App (应用) message types ---

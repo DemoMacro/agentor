@@ -18,36 +18,16 @@
 
 > **Note:** Once an HTTPS callback URL is configured, WebSocket mode will no longer be available — the two are mutually exclusive.
 
-## Environment Variables
-
-| Variable               | Required | Description           |
-| ---------------------- | -------- | --------------------- |
-| `QQ_BOT_APP_ID`        | Yes      | QQ Bot application ID |
-| `QQ_BOT_CLIENT_SECRET` | Yes      | QQ Bot client secret  |
-
-## Configuration
-
-| Option         | Type                        | Default                                        | Description                         |
-| -------------- | --------------------------- | ---------------------------------------------- | ----------------------------------- |
-| `mode`         | `"callback" \| "websocket"` | `"websocket"`                                  | Connection mode                     |
-| `appId`        | `string`                    | —                                              | Application ID (required)           |
-| `clientSecret` | `string`                    | —                                              | Client secret (required)            |
-| `intents`      | `number`                    | `PUBLIC_GUILD_MESSAGES \| GROUP_AND_C2C_EVENT` | Event intent bitmask                |
-| `sandbox`      | `boolean`                   | `false`                                        | Use sandbox environment (websocket) |
-| `userName`     | `string`                    | `"QQ Bot"`                                     | Bot display name                    |
-| `wsUrl`        | `string`                    | QQ Bot default                                 | WebSocket gateway URL               |
-| `WebSocket`    | `typeof WebSocket`          | `globalThis.WebSocket`                         | Custom WebSocket class              |
-| `fetch`        | `typeof fetch`              | `globalThis.fetch`                             | Custom fetch function               |
-
-## Platform Setup
-
-1. Log in to [QQ Open Platform](https://q.qq.com/)
-2. Create a bot application and obtain App ID and Client Secret
-3. WebSocket mode: no extra configuration needed, connect directly
-4. Webhook mode: configure an HTTPS callback URL in the app details
-   - Once configured, WebSocket mode becomes unavailable (mutually exclusive)
+## Installation
 
 ```bash
+# Install with npm
+npm install @agentor/chat-qq
+
+# Install with yarn
+yarn add @agentor/chat-qq
+
+# Install with pnpm
 pnpm add @agentor/chat-qq
 ```
 
@@ -105,6 +85,35 @@ app.all(
 );
 serve(app, { port: 3000 });
 ```
+
+## Environment Variables
+
+| Variable               | Required | Description           |
+| ---------------------- | -------- | --------------------- |
+| `QQ_BOT_APP_ID`        | Yes      | QQ Bot application ID |
+| `QQ_BOT_CLIENT_SECRET` | Yes      | QQ Bot client secret  |
+
+## Configuration
+
+| Option         | Type                        | Default                                        | Description                         |
+| -------------- | --------------------------- | ---------------------------------------------- | ----------------------------------- |
+| `mode`         | `"callback" \| "websocket"` | `"websocket"`                                  | Connection mode                     |
+| `appId`        | `string`                    | —                                              | Application ID (required)           |
+| `clientSecret` | `string`                    | —                                              | Client secret (required)            |
+| `intents`      | `number`                    | `PUBLIC_GUILD_MESSAGES \| GROUP_AND_C2C_EVENT` | Event intent bitmask                |
+| `sandbox`      | `boolean`                   | `false`                                        | Use sandbox environment (websocket) |
+| `userName`     | `string`                    | `"QQ Bot"`                                     | Bot display name                    |
+| `wsUrl`        | `string`                    | QQ Bot default                                 | WebSocket gateway URL               |
+| `WebSocket`    | `typeof WebSocket`          | `globalThis.WebSocket`                         | Custom WebSocket class              |
+| `fetch`        | `typeof fetch`              | `globalThis.fetch`                             | Custom fetch function               |
+
+## Platform Setup
+
+1. Log in to [QQ Open Platform](https://q.qq.com/)
+2. Create a bot application and obtain App ID and Client Secret
+3. WebSocket mode: no extra configuration needed, connect directly
+4. Webhook mode: configure an HTTPS callback URL in the app details
+   - Once configured, WebSocket mode becomes unavailable (mutually exclusive)
 
 ## Message Type Support
 

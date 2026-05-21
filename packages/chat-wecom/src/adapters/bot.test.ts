@@ -176,18 +176,18 @@ describe("WeComBotCallbackAdapter parseMessage", () => {
     expect(msg.attachments[0].size).toBe(1024);
   });
 
-  it("parses message with voice attachment", () => {
+  it("parses voice message with transcription text", () => {
     const raw = {
       msgid: "msg_004",
       aibotid: "bot_001",
       chattype: "single" as const,
       from: { userid: "user_voice" },
       msgtype: "voice" as const,
-      voice: { url: "https://example.com/voice.amr", aeskey: "voicekey" },
+      voice: { content: "语音转文本的内容" },
     };
     const msg = adapter.parseMessage(raw);
-    expect(msg.attachments).toHaveLength(1);
-    expect(msg.attachments[0].type).toBe("audio");
+    expect(msg.text).toBe("语音转文本的内容");
+    expect(msg.attachments).toEqual([]);
   });
 
   it("parses message with video attachment", () => {

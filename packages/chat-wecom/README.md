@@ -17,79 +17,16 @@
 - **Card Messages** — Convert Chat SDK `CardElement` to WeCom Template Card
 - **Encryption** — AES-256-CBC encryption/decryption + SHA1 signature verification
 
-## Environment Variables
-
-| Variable                     | Required | Description                                |
-| ---------------------------- | -------- | ------------------------------------------ |
-| `WECOM_WEBHOOK_KEY`          | Webhook  | Webhook group bot Key                      |
-| `WECOM_BOT_TOKEN`            | Bot (CB) | Callback Token                             |
-| `WECOM_BOT_ENCODING_AES_KEY` | Bot (CB) | Callback message encryption Key (43 chars) |
-| `WECOM_BOT_WS_BOT_ID`        | Bot (WS) | Smart bot ID                               |
-| `WECOM_BOT_WS_SECRET`        | Bot (WS) | Smart bot Secret                           |
-| `WECOM_APP_CORP_ID`          | App      | Corporation ID                             |
-| `WECOM_APP_CORP_SECRET`      | App      | Application Secret                         |
-| `WECOM_APP_AGENT_ID`         | App      | Application AgentId                        |
-| `WECOM_APP_TOKEN`            | App (CB) | Callback Token                             |
-| `WECOM_APP_ENCODING_AES_KEY` | App (CB) | Callback message encryption Key (43 chars) |
-
-## Configuration
-
-### Webhook (Group Bot)
-
-| Option     | Type           | Default            | Description            |
-| ---------- | -------------- | ------------------ | ---------------------- |
-| `key`      | `string`       | —                  | Webhook Key (required) |
-| `userName` | `string`       | `"WeCom Webhook"`  | Bot display name       |
-| `fetch`    | `typeof fetch` | `globalThis.fetch` | Custom fetch function  |
-
-### Bot (Smart Bot)
-
-| Option           | Type                        | Default                | Description                            |
-| ---------------- | --------------------------- | ---------------------- | -------------------------------------- |
-| `mode`           | `"callback" \| "websocket"` | `"websocket"`          | Connection mode                        |
-| `token`          | `string`                    | —                      | Callback Token (required for callback) |
-| `encodingAESKey` | `string`                    | —                      | Encryption Key (required for callback) |
-| `botId`          | `string`                    | —                      | Bot ID (required for websocket)        |
-| `secret`         | `string`                    | —                      | Bot Secret (required for websocket)    |
-| `userName`       | `string`                    | `"WeCom Bot"`          | Bot display name                       |
-| `wsUrl`          | `string`                    | WeCom default          | WebSocket server URL                   |
-| `WebSocket`      | `typeof WebSocket`          | `globalThis.WebSocket` | Custom WebSocket class                 |
-
-### App (Application)
-
-| Option           | Type           | Default            | Description                             |
-| ---------------- | -------------- | ------------------ | --------------------------------------- |
-| `corpId`         | `string`       | —                  | Corporation ID (required)               |
-| `corpSecret`     | `string`       | —                  | Application Secret (required)           |
-| `agentId`        | `number`       | —                  | Application AgentId (required)          |
-| `token`          | `string`       | —                  | Callback Token (required for callbacks) |
-| `encodingAESKey` | `string`       | —                  | Encryption Key (required for callbacks) |
-| `userName`       | `string`       | `"WeCom App"`      | App display name                        |
-| `fetch`          | `typeof fetch` | `globalThis.fetch` | Custom fetch function                   |
-
-## Platform Setup
-
-### Webhook (Group Bot)
-
-1. Add a "Group Bot" in a WeCom group chat
-2. Select "Custom Bot" and create it
-3. Copy the `key` parameter from the Webhook URL
-
-### Bot (Smart Bot)
-
-1. Log in to [WeCom Admin Console](https://work.weixin.qq.com/wework_admin/frame)
-2. Navigate to "App Management" → "Smart Bot" to create a bot
-3. Callback mode: configure the callback URL and provide Token and EncodingAESKey
-4. WebSocket mode: obtain the Bot ID and Secret
-
-### App (Application)
-
-1. Log in to [WeCom Admin Console](https://work.weixin.qq.com/wework_admin/frame)
-2. Navigate to "App Management" → "Custom" to create an app
-3. Obtain CorpId, CorpSecret, and AgentId
-4. For receiving callbacks: configure the "Receive Messages" URL, Token, and EncodingAESKey in the app details
+## Installation
 
 ```bash
+# Install with npm
+npm install @agentor/chat-wecom
+
+# Install with yarn
+yarn add @agentor/chat-wecom
+
+# Install with pnpm
 pnpm add @agentor/chat-wecom
 ```
 
@@ -185,6 +122,78 @@ await adapter.deleteMessage(threadId, result.id);
 // Get Access Token
 const token = await adapter.getAccessToken();
 ```
+
+## Environment Variables
+
+| Variable                     | Required | Description                                |
+| ---------------------------- | -------- | ------------------------------------------ |
+| `WECOM_WEBHOOK_KEY`          | Webhook  | Webhook group bot Key                      |
+| `WECOM_BOT_TOKEN`            | Bot (CB) | Callback Token                             |
+| `WECOM_BOT_ENCODING_AES_KEY` | Bot (CB) | Callback message encryption Key (43 chars) |
+| `WECOM_BOT_WS_BOT_ID`        | Bot (WS) | Smart bot ID                               |
+| `WECOM_BOT_WS_SECRET`        | Bot (WS) | Smart bot Secret                           |
+| `WECOM_APP_CORP_ID`          | App      | Corporation ID                             |
+| `WECOM_APP_CORP_SECRET`      | App      | Application Secret                         |
+| `WECOM_APP_AGENT_ID`         | App      | Application AgentId                        |
+| `WECOM_APP_TOKEN`            | App (CB) | Callback Token                             |
+| `WECOM_APP_ENCODING_AES_KEY` | App (CB) | Callback message encryption Key (43 chars) |
+
+## Configuration
+
+### Webhook (Group Bot)
+
+| Option     | Type           | Default            | Description            |
+| ---------- | -------------- | ------------------ | ---------------------- |
+| `key`      | `string`       | —                  | Webhook Key (required) |
+| `userName` | `string`       | `"WeCom Webhook"`  | Bot display name       |
+| `fetch`    | `typeof fetch` | `globalThis.fetch` | Custom fetch function  |
+
+### Bot (Smart Bot)
+
+| Option           | Type                        | Default                | Description                            |
+| ---------------- | --------------------------- | ---------------------- | -------------------------------------- |
+| `mode`           | `"callback" \| "websocket"` | `"websocket"`          | Connection mode                        |
+| `token`          | `string`                    | —                      | Callback Token (required for callback) |
+| `encodingAESKey` | `string`                    | —                      | Encryption Key (required for callback) |
+| `botId`          | `string`                    | —                      | Bot ID (required for websocket)        |
+| `secret`         | `string`                    | —                      | Bot Secret (required for websocket)    |
+| `userName`       | `string`                    | `"WeCom Bot"`          | Bot display name                       |
+| `wsUrl`          | `string`                    | WeCom default          | WebSocket server URL                   |
+| `WebSocket`      | `typeof WebSocket`          | `globalThis.WebSocket` | Custom WebSocket class                 |
+
+### App (Application)
+
+| Option           | Type           | Default            | Description                             |
+| ---------------- | -------------- | ------------------ | --------------------------------------- |
+| `corpId`         | `string`       | —                  | Corporation ID (required)               |
+| `corpSecret`     | `string`       | —                  | Application Secret (required)           |
+| `agentId`        | `number`       | —                  | Application AgentId (required)          |
+| `token`          | `string`       | —                  | Callback Token (required for callbacks) |
+| `encodingAESKey` | `string`       | —                  | Encryption Key (required for callbacks) |
+| `userName`       | `string`       | `"WeCom App"`      | App display name                        |
+| `fetch`          | `typeof fetch` | `globalThis.fetch` | Custom fetch function                   |
+
+## Platform Setup
+
+### Webhook (Group Bot)
+
+1. Add a "Group Bot" in a WeCom group chat
+2. Select "Custom Bot" and create it
+3. Copy the `key` parameter from the Webhook URL
+
+### Bot (Smart Bot)
+
+1. Log in to [WeCom Admin Console](https://work.weixin.qq.com/wework_admin/frame)
+2. Navigate to "App Management" → "Smart Bot" to create a bot
+3. Callback mode: configure the callback URL and provide Token and EncodingAESKey
+4. WebSocket mode: obtain the Bot ID and Secret
+
+### App (Application)
+
+1. Log in to [WeCom Admin Console](https://work.weixin.qq.com/wework_admin/frame)
+2. Navigate to "App Management" → "Custom" to create an app
+3. Obtain CorpId, CorpSecret, and AgentId
+4. For receiving callbacks: configure the "Receive Messages" URL, Token, and EncodingAESKey in the app details
 
 ## Message Type Support
 

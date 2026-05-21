@@ -90,11 +90,12 @@ export class QQBotAdapter implements Adapter<QQBotThreadId, BotRawMessage> {
 
     if (isCallbackConfig(this.config)) return;
 
+    const prefix = this.name;
     this.wsManager = new QQBotWebSocketManager(this.config, () => this.getAccessToken());
     this.wsManager.onMessage((eventType, data) => {
       if (!this.chat) return;
 
-      const result = parseEventType(eventType, data);
+      const result = parseEventType(eventType, data, prefix);
       if (!result) return;
 
       const { threadId, event } = result;
@@ -146,7 +147,7 @@ export class QQBotAdapter implements Adapter<QQBotThreadId, BotRawMessage> {
     const eventData = payload.d;
 
     if (this.chat && eventData && eventType) {
-      const result = parseEventType(eventType, eventData);
+      const result = parseEventType(eventType, eventData, this.name);
       if (result) {
         const { threadId, event } = result;
         this.lastMsgIds.set(threadId, event.id);
@@ -482,7 +483,7 @@ export class QQBotAdapter implements Adapter<QQBotThreadId, BotRawMessage> {
   async startTyping(_threadId: string, _status?: string): Promise<void> {}
 
   parseMessage(raw: QQMessageEvent): Message<BotRawMessage> {
-    const { threadId, userId, userName } = extractMessageMeta(raw);
+    const { threadId, userId, userName } = extractMessageMeta(raw, this.name);
     const text = raw.content ?? "";
 
     return new Message({
@@ -537,40 +538,44 @@ export class QQBotAdapter implements Adapter<QQBotThreadId, BotRawMessage> {
 
 // --- 事件解析 ---
 
-function encodeThreadId(scene: QQMessageScene, id: string): string {
-  return `qq-bot:${scene}:${id}`;
+function encodeThreadId(prefix: string, scene: QQMessageScene, id: string): string {
+  return `${prefix}:${scene}:${id}`;
 }
 
 function parseEventType(
   eventType: string,
   data: unknown,
+  prefix: string,
 ): { threadId: string; event: QQMessageEvent } | null {
   const event = data as QQMessageEvent;
 
   switch (eventType) {
     case "C2C_MESSAGE_CREATE": {
       const e = event as QQC2CMessageEvent;
-      return { threadId: encodeThreadId("c2c", e.author.user_openid), event };
+      return { threadId: encodeThreadId(prefix, "c2c", e.author.user_openid), event };
     }
     case "GROUP_AT_MESSAGE_CREATE": {
       const e = event as QQGroupMessageEvent;
-      return { threadId: encodeThreadId("group", e.group_openid), event };
+      return { threadId: encodeThreadId(prefix, "group", e.group_openid), event };
     }
     case "AT_MESSAGE_CREATE":
     case "MESSAGE_CREATE": {
       const e = event as QQChannelMessageEvent;
-      return { threadId: encodeThreadId("channel", e.channel_id), event };
+      return { threadId: encodeThreadId(prefix, "channel", e.channel_id), event };
     }
     case "DIRECT_MESSAGE_CREATE": {
       const e = event as QQChannelMessageEvent;
-      return { threadId: encodeThreadId("direct", e.channel_id), event };
+      return { threadId: encodeThreadId(prefix, "direct", e.channel_id), event };
     }
     default:
       return null;
   }
 }
 
-function extractMessageMeta(raw: QQMessageEvent): {
+function extractMessageMeta(
+  raw: QQMessageEvent,
+  prefix: string,
+): {
   threadId: string;
   userId: string;
   userName: string;
@@ -579,21 +584,21 @@ function extractMessageMeta(raw: QQMessageEvent): {
   if ("group_openid" in raw) {
     const e = raw as QQGroupMessageEvent;
     const id = e.author.member_openid;
-    return { threadId: encodeThreadId("group", e.group_openid), userId: id, userName: id };
+    return { threadId: encodeThreadId(prefix, "group", e.group_openid), userId: id, userName: id };
   }
   // 频道/私信: 顶层有 channel_id 和 guild_id
   if ("channel_id" in raw) {
     const e = raw as QQChannelMessageEvent;
     const userId = e.author.id ?? e.author.user_openid ?? "";
     return {
-      threadId: encodeThreadId("channel", e.channel_id),
+      threadId: encodeThreadId(prefix, "channel", e.channel_id),
       userId,
       userName: e.author.username ?? userId,
     };
   }
   // C2C: author 中只有 user_openid
   const id = (raw as QQC2CMessageEvent).author.user_openid;
-  return { threadId: encodeThreadId("c2c", id), userId: id, userName: id };
+  return { threadId: encodeThreadId(prefix, "c2c", id), userId: id, userName: id };
 }
 
 function parseAttachments(raw: QQMessageEvent): Attachment[] {

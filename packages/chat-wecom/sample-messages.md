@@ -28,6 +28,7 @@ GET/POST /webhook?msg_signature=xxx&timestamp=1234&nonce=abc&echostr=optional
     "userid": "user001",
     "corpid": "corp123"
   },
+  "response_url": "https://qyapi.weixin.qq.com/cgi-bin/aibot/response?response_code=xxx",
   "create_time": 1700000000,
   "msgtype": "text",
   "text": {
@@ -36,22 +37,82 @@ GET/POST /webhook?msg_signature=xxx&timestamp=1234&nonce=abc&echostr=optional
 }
 ```
 
-## Bot 回调模式 — 图片消息
+## Bot 回调模式 — 图片消息 (仅单聊)
 
 ```json
 {
   "msgid": "msg_234567",
   "aibotid": "bot_abc",
-  "chatid": "chat_001",
   "chattype": "single",
   "from": {
     "userid": "user002"
   },
+  "response_url": "https://qyapi.weixin.qq.com/cgi-bin/aibot/response?response_code=xxx",
   "create_time": 1700000001,
   "msgtype": "image",
   "image": {
-    "url": "https://example.com/image.enc",
-    "aeskey": "base64-encoded-aes-key"
+    "url": "https://example.com/image.enc"
+  }
+}
+```
+
+> 回调模式中图片/文件/视频/语音的 URL 已加密，解密 AESKey 即为配置的 EncodingAESKey。
+
+## Bot 回调模式 — 语音消息 (仅单聊)
+
+语音消息不提供音频文件 URL，仅返回语音转文本内容。
+
+```json
+{
+  "msgid": "msg_voice_001",
+  "aibotid": "bot_abc",
+  "chattype": "single",
+  "from": {
+    "userid": "user_voice"
+  },
+  "response_url": "https://qyapi.weixin.qq.com/cgi-bin/aibot/response?response_code=xxx",
+  "create_time": 1700000003,
+  "msgtype": "voice",
+  "voice": {
+    "content": "语音转文本的内容"
+  }
+}
+```
+
+## Bot 回调模式 — 文件消息 (仅单聊)
+
+```json
+{
+  "msgid": "msg_file_001",
+  "aibotid": "bot_abc",
+  "chattype": "single",
+  "from": {
+    "userid": "user_file"
+  },
+  "response_url": "https://qyapi.weixin.qq.com/cgi-bin/aibot/response?response_code=xxx",
+  "create_time": 1700000004,
+  "msgtype": "file",
+  "file": {
+    "url": "https://example.com/file.enc"
+  }
+}
+```
+
+## Bot 回调模式 — 视频消息 (仅单聊)
+
+```json
+{
+  "msgid": "msg_video_001",
+  "aibotid": "bot_abc",
+  "chattype": "single",
+  "from": {
+    "userid": "user_video"
+  },
+  "response_url": "https://qyapi.weixin.qq.com/cgi-bin/aibot/response?response_code=xxx",
+  "create_time": 1700000005,
+  "msgtype": "video",
+  "video": {
+    "url": "https://example.com/video.enc"
   }
 }
 ```
@@ -67,14 +128,24 @@ GET/POST /webhook?msg_signature=xxx&timestamp=1234&nonce=abc&echostr=optional
   "from": {
     "userid": "user003"
   },
+  "response_url": "https://qyapi.weixin.qq.com/cgi-bin/aibot/response?response_code=xxx",
   "create_time": 1700000002,
   "msgtype": "mixed",
-  "text": {
-    "content": "描述文字"
-  },
-  "image": {
-    "url": "https://example.com/mixed-image.enc",
-    "aeskey": "base64-encoded-aes-key"
+  "mixed": {
+    "msg_item": [
+      {
+        "msgtype": "text",
+        "text": {
+          "content": "描述文字"
+        }
+      },
+      {
+        "msgtype": "image",
+        "image": {
+          "url": "https://example.com/mixed-image.enc"
+        }
+      }
+    ]
   }
 }
 ```
@@ -83,7 +154,7 @@ GET/POST /webhook?msg_signature=xxx&timestamp=1234&nonce=abc&echostr=optional
 
 ```json
 {
-  "cmd": "ai_bot_msg",
+  "cmd": "aibot_msg_callback",
   "headers": {
     "req_id": "req_001"
   },

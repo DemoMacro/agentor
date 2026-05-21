@@ -17,6 +17,112 @@
 - **卡片消息** — 将 Chat SDK 的 `CardElement` 转换为企业微信 Template Card
 - **安全加密** — AES-256-CBC 加解密 + SHA1 签名校验
 
+## 安装
+
+```bash
+# Install with npm
+npm install @agentor/chat-wecom
+
+# Install with yarn
+yarn add @agentor/chat-wecom
+
+# Install with pnpm
+pnpm add @agentor/chat-wecom
+```
+
+## 快速开始
+
+### Webhook (群机器人)
+
+单向推送消息到群聊：
+
+```typescript
+import { createWeComWebhookAdapter } from "@agentor/chat-wecom";
+
+const adapter = createWeComWebhookAdapter({
+  key: process.env.WECOM_WEBHOOK_KEY!,
+});
+
+const threadId = adapter.encodeThreadId({ key: process.env.WECOM_WEBHOOK_KEY! });
+const result = await adapter.postMessage(threadId, "Hello from @agentor/chat-wecom!");
+```
+
+### Bot — WebSocket 长连接模式 (智能机器人)
+
+通过 WebSocket 直连企业微信服务，无需公网端点：
+
+```typescript
+import { createWeComBotAdapter } from "@agentor/chat-wecom";
+
+const adapter = createWeComBotAdapter({
+  botId: process.env.WECOM_BOT_WS_BOT_ID!,
+  secret: process.env.WECOM_BOT_WS_SECRET!,
+});
+
+await adapter.initialize({
+  processMessage: async (_adapter, threadId, factory) => {
+    const message = await factory();
+    await adapter.postMessage(threadId, message.text);
+  },
+});
+
+// 断开连接
+await adapter.disconnect();
+```
+
+### Bot — 回调 URL 模式 (智能机器人)
+
+通过 HTTP 回调接收和回复消息，需要公网可达的端点：
+
+```typescript
+import { createWeComBotAdapter } from "@agentor/chat-wecom";
+
+const adapter = createWeComBotAdapter({
+  mode: "callback",
+  token: process.env.WECOM_BOT_TOKEN!,
+  encodingAESKey: process.env.WECOM_BOT_ENCODING_AES_KEY!,
+});
+
+await adapter.initialize({
+  processMessage: async (_adapter, threadId, factory) => {
+    const message = await factory();
+    await adapter.postMessage(threadId, message.text);
+  },
+});
+
+// 在 HTTP 服务器中处理回调
+// adapter.handleWebhook(request) → Response
+```
+
+### App (应用)
+
+发送应用消息并接收回调事件：
+
+```typescript
+import { createWeComAppAdapter } from "@agentor/chat-wecom";
+
+const adapter = createWeComAppAdapter({
+  corpId: process.env.WECOM_APP_CORP_ID!,
+  corpSecret: process.env.WECOM_APP_CORP_SECRET!,
+  agentId: Number(process.env.WECOM_APP_AGENT_ID!),
+  token: process.env.WECOM_APP_TOKEN, // 接收回调时必填
+  encodingAESKey: process.env.WECOM_APP_ENCODING_AES_KEY, // 接收回调时必填
+});
+
+// 发送消息
+const threadId = adapter.encodeThreadId({
+  corpId: process.env.WECOM_APP_CORP_ID!,
+  userId: "user-id",
+});
+const result = await adapter.postMessage(threadId, "Hello from app!");
+
+// 撤回消息
+await adapter.deleteMessage(threadId, result.id);
+
+// 获取 Access Token
+const token = await adapter.getAccessToken();
+```
+
 ## 环境变量
 
 | 变量名                       | 必填       | 说明                         |
@@ -88,103 +194,6 @@
 2. 进入「应用管理」→「自建」创建应用
 3. 获取 CorpId、CorpSecret、AgentId
 4. 如需接收回调：在应用详情中配置「接收消息」的 URL、Token、EncodingAESKey
-
-```bash
-pnpm add @agentor/chat-wecom
-```
-
-## 快速开始
-
-### Webhook (群机器人)
-
-单向推送消息到群聊：
-
-```typescript
-import { createWeComWebhookAdapter } from "@agentor/chat-wecom";
-
-const adapter = createWeComWebhookAdapter({
-  key: process.env.WECOM_WEBHOOK_KEY!,
-});
-
-const threadId = adapter.encodeThreadId({ key: process.env.WECOM_WEBHOOK_KEY! });
-const result = await adapter.postMessage(threadId, "Hello from @agentor/chat-wecom!");
-```
-
-### Bot — 回调 URL 模式 (智能机器人)
-
-通过 HTTP 回调接收和回复消息，需要公网可达的端点：
-
-```typescript
-import { createWeComBotAdapter } from "@agentor/chat-wecom";
-
-const adapter = createWeComBotAdapter({
-  token: process.env.WECOM_BOT_TOKEN!,
-  encodingAESKey: process.env.WECOM_BOT_ENCODING_AES_KEY!,
-});
-
-await adapter.initialize({
-  processMessage: async (_adapter, threadId, factory) => {
-    const message = await factory();
-    await adapter.postMessage(threadId, message.text);
-  },
-});
-
-// 在 HTTP 服务器中处理回调
-// adapter.handleWebhook(request) → Response
-```
-
-### Bot — WebSocket 长连接模式 (智能机器人)
-
-通过 WebSocket 直连企业微信服务，无需公网端点：
-
-```typescript
-import { createWeComBotAdapter } from "@agentor/chat-wecom";
-
-const adapter = createWeComBotAdapter({
-  mode: "websocket",
-  botId: process.env.WECOM_BOT_WS_BOT_ID!,
-  secret: process.env.WECOM_BOT_WS_SECRET!,
-});
-
-await adapter.initialize({
-  processMessage: async (_adapter, threadId, factory) => {
-    const message = await factory();
-    await adapter.postMessage(threadId, message.text);
-  },
-});
-
-// 断开连接
-await adapter.disconnect();
-```
-
-### App (应用)
-
-发送应用消息并接收回调事件：
-
-```typescript
-import { createWeComAppAdapter } from "@agentor/chat-wecom";
-
-const adapter = createWeComAppAdapter({
-  corpId: process.env.WECOM_APP_CORP_ID!,
-  corpSecret: process.env.WECOM_APP_CORP_SECRET!,
-  agentId: Number(process.env.WECOM_APP_AGENT_ID!),
-  token: process.env.WECOM_APP_TOKEN, // 接收回调时必填
-  encodingAESKey: process.env.WECOM_APP_ENCODING_AES_KEY, // 接收回调时必填
-});
-
-// 发送消息
-const threadId = adapter.encodeThreadId({
-  corpId: process.env.WECOM_APP_CORP_ID!,
-  userId: "user-id",
-});
-const result = await adapter.postMessage(threadId, "Hello from app!");
-
-// 撤回消息
-await adapter.deleteMessage(threadId, result.id);
-
-// 获取 Access Token
-const token = await adapter.getAccessToken();
-```
 
 ## 消息类型支持
 
