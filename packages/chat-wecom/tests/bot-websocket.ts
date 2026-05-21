@@ -3,7 +3,7 @@
 
 import { Message, type Adapter, type FileUpload } from "chat";
 
-import { createWeComBotAdapter, fetchEncryptedMedia } from "../src";
+import { createWeComBotWebSocketAdapter, fetchEncryptedMedia } from "../src";
 
 const BOT_WS_BOT_ID = process.env.WECOM_BOT_WS_BOT_ID;
 const BOT_WS_SECRET = process.env.WECOM_BOT_WS_SECRET;
@@ -14,8 +14,7 @@ const BOT_CHAT_ID = process.env.WECOM_BOT_CHAT_ID;
 async function threadIdCodec() {
   console.log("=== Thread ID Codec ===");
 
-  const adapter = createWeComBotAdapter({
-    mode: "websocket",
+  const adapter = createWeComBotWebSocketAdapter({
     botId: BOT_WS_BOT_ID ?? "test-bot-id",
     secret: BOT_WS_SECRET ?? "test-secret",
   });
@@ -40,8 +39,7 @@ async function wsConnectTest() {
     return;
   }
 
-  const adapter = createWeComBotAdapter({
-    mode: "websocket",
+  const adapter = createWeComBotWebSocketAdapter({
     botId: BOT_WS_BOT_ID,
     secret: BOT_WS_SECRET,
   });

@@ -4,7 +4,7 @@
 import { Message, type Adapter } from "chat";
 import { H3, fromWebHandler, serve } from "h3";
 
-import { createWeComBotAdapter, fetchEncryptedMedia } from "../src";
+import { createWeComBotCallbackAdapter, fetchEncryptedMedia } from "../src";
 
 const BOT_TOKEN = process.env.WECOM_BOT_TOKEN!;
 const BOT_ENCODING_AES_KEY = process.env.WECOM_BOT_ENCODING_AES_KEY!;
@@ -40,7 +40,7 @@ async function cryptoTest() {
 async function threadIdTest() {
   console.log("\n=== Thread ID Codec ===");
 
-  const adapter = createWeComBotAdapter({
+  const adapter = createWeComBotCallbackAdapter({
     token: BOT_TOKEN,
     encodingAESKey: BOT_ENCODING_AES_KEY,
   });
@@ -58,7 +58,7 @@ async function threadIdTest() {
 // --- 启动回调服务器 ---
 
 async function startServer() {
-  const adapter = createWeComBotAdapter({
+  const adapter = createWeComBotCallbackAdapter({
     token: BOT_TOKEN,
     encodingAESKey: BOT_ENCODING_AES_KEY,
   });

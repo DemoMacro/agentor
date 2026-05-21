@@ -2,7 +2,7 @@
 // 企业微信应用: 发送应用消息、接收回调事件、Token 管理
 // 回调消息全程使用 XML 格式
 
-import { extractCard, extractFiles } from "@chat-adapter/shared";
+import { extractCard, extractFiles, ValidationError } from "@chat-adapter/shared";
 import {
   Message,
   NotImplementedError,
@@ -465,6 +465,39 @@ function parseAppAttachments(raw: WeComAppCallbackMessage): Attachment[] {
   return attachments;
 }
 
-export function createWeComAppAdapter(config: WeComAppConfig) {
-  return new WeComAppAdapter(config);
+export function createWeComAppAdapter(config?: Partial<WeComAppConfig>): WeComAppAdapter {
+  const corpId = config?.corpId ?? process.env.WECOM_APP_CORP_ID;
+  const corpSecret = config?.corpSecret ?? process.env.WECOM_APP_CORP_SECRET;
+  const agentId =
+    config?.agentId ??
+    (process.env.WECOM_APP_AGENT_ID ? Number(process.env.WECOM_APP_AGENT_ID) : undefined);
+
+  if (!corpId) {
+    throw new ValidationError(
+      "wecom-app",
+      "corpId is required. Pass it in config or set WECOM_APP_CORP_ID.",
+    );
+  }
+  if (!corpSecret) {
+    throw new ValidationError(
+      "wecom-app",
+      "corpSecret is required. Pass it in config or set WECOM_APP_CORP_SECRET.",
+    );
+  }
+  if (!agentId) {
+    throw new ValidationError(
+      "wecom-app",
+      "agentId is required. Pass it in config or set WECOM_APP_AGENT_ID.",
+    );
+  }
+
+  return new WeComAppAdapter({
+    corpId,
+    corpSecret,
+    agentId,
+    token: config?.token ?? process.env.WECOM_APP_TOKEN,
+    encodingAESKey: config?.encodingAESKey ?? process.env.WECOM_APP_ENCODING_AES_KEY,
+    userName: config?.userName,
+    fetch: config?.fetch,
+  });
 }

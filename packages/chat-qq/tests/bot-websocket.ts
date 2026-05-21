@@ -17,7 +17,7 @@ async function threadIdCodec() {
     mode: "websocket",
     appId: APP_ID ?? "test-app-id",
     clientSecret: CLIENT_SECRET ?? "test-secret",
-  });
+  } as Parameters<typeof createQQBotAdapter>[0]);
 
   // C2C
   const c2cId = adapter.encodeThreadId({ scene: "c2c", id: "user_openid_abc" });

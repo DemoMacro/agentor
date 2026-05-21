@@ -1,11 +1,12 @@
 {
   "name": "@agentor/chat-wecom",
-  "version": "0.0.4",
+  "version": "0.1.0",
   "description": "企业微信 (WeCom) Chat SDK 适配器，支持 Webhook 群机器人、智能机器人（回调 URL / WebSocket 长连接）和自建应用",
   "keywords": [
     "agentor",
     "bot",
     "chat-adapter",
+    "chat-sdk",
     "template-card",
     "websocket",
     "wechat-work",
@@ -39,12 +40,21 @@
       "import": "./dist/index.mjs"
     }
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "basis build --stub",
     "build": "vp pack",
+    "test": "vp test run",
+    "test:watch": "vp test",
+    "test:coverage": "vp test run --coverage",
     "prepack": "pnpm build"
   },
   "dependencies": {
     "@chat-adapter/shared": "4.29.0"
+  },
+  "peerDependencies": {
+    "chat": "^4.0.0"
   }
 }

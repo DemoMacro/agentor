@@ -3,7 +3,7 @@
 
 import { createHash } from "node:crypto";
 
-import { extractCard, extractFiles, toBufferSync } from "@chat-adapter/shared";
+import { extractCard, extractFiles, toBufferSync, ValidationError } from "@chat-adapter/shared";
 import {
   Message,
   NotImplementedError,
@@ -207,6 +207,21 @@ export class WeComWebhookAdapter implements Adapter<WeComWebhookThreadId, WeComB
   }
 }
 
-export function createWeComWebhookAdapter(config: WeComWebhookConfig) {
-  return new WeComWebhookAdapter(config);
+export function createWeComWebhookAdapter(
+  config?: Partial<WeComWebhookConfig>,
+): WeComWebhookAdapter {
+  const key = config?.key ?? process.env.WECOM_WEBHOOK_KEY;
+
+  if (!key) {
+    throw new ValidationError(
+      "wecom-webhook",
+      "Webhook key is required. Pass it in config or set WECOM_WEBHOOK_KEY.",
+    );
+  }
+
+  return new WeComWebhookAdapter({
+    key,
+    userName: config?.userName,
+    fetch: config?.fetch,
+  });
 }

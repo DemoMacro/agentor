@@ -4,28 +4,100 @@
 ![npm downloads](https://img.shields.io/npm/dw/@agentor/chat-wecom)
 ![npm license](https://img.shields.io/npm/l/@agentor/chat-wecom)
 
-> [Chat SDK](https://github.com/DemoMacro/agentor) 适配器，用于 [企业微信 (WeCom)](https://developer.work.weixin.qq.com/) 消息集成。
+**[English](./README.md)** | [中文](./README.zh-CN.md)
 
-## 功能特性
+> [Chat SDK](https://github.com/DemoMacro/agentor) adapter for [WeCom (企业微信)](https://developer.work.weixin.qq.com/) messaging integration.
 
-- **Webhook (群机器人)** — 通过 Webhook URL 推送消息到群聊
-- **Bot (智能机器人)** — 支持回调 URL 和 WebSocket 长连接两种模式收发消息
-- **App (应用)** — 发送应用消息、接收回调事件、管理 Access Token
-- **富媒体支持** — 图片、语音、视频、文件的上传下载
-- **卡片消息** — 将 Chat SDK 的 `CardElement` 转换为企业微信 Template Card
-- **安全加密** — AES-256-CBC 加解密 + SHA1 签名校验
+## Features
 
-## 安装
+- **Webhook (Group Bot)** — Push messages to group chats via Webhook URL
+- **Bot (Smart Bot)** — Send and receive messages via callback URL or WebSocket long connection
+- **App (Application)** — Send app messages, receive callback events, manage Access Token
+- **Rich Media** — Upload and download images, voice, video, and files
+- **Card Messages** — Convert Chat SDK `CardElement` to WeCom Template Card
+- **Encryption** — AES-256-CBC encryption/decryption + SHA1 signature verification
+
+## Environment Variables
+
+| Variable                     | Required | Description                                |
+| ---------------------------- | -------- | ------------------------------------------ |
+| `WECOM_WEBHOOK_KEY`          | Webhook  | Webhook group bot Key                      |
+| `WECOM_BOT_TOKEN`            | Bot (CB) | Callback Token                             |
+| `WECOM_BOT_ENCODING_AES_KEY` | Bot (CB) | Callback message encryption Key (43 chars) |
+| `WECOM_BOT_WS_BOT_ID`        | Bot (WS) | Smart bot ID                               |
+| `WECOM_BOT_WS_SECRET`        | Bot (WS) | Smart bot Secret                           |
+| `WECOM_APP_CORP_ID`          | App      | Corporation ID                             |
+| `WECOM_APP_CORP_SECRET`      | App      | Application Secret                         |
+| `WECOM_APP_AGENT_ID`         | App      | Application AgentId                        |
+| `WECOM_APP_TOKEN`            | App (CB) | Callback Token                             |
+| `WECOM_APP_ENCODING_AES_KEY` | App (CB) | Callback message encryption Key (43 chars) |
+
+## Configuration
+
+### Webhook (Group Bot)
+
+| Option     | Type           | Default            | Description            |
+| ---------- | -------------- | ------------------ | ---------------------- |
+| `key`      | `string`       | —                  | Webhook Key (required) |
+| `userName` | `string`       | `"WeCom Webhook"`  | Bot display name       |
+| `fetch`    | `typeof fetch` | `globalThis.fetch` | Custom fetch function  |
+
+### Bot (Smart Bot)
+
+| Option           | Type                        | Default                | Description                            |
+| ---------------- | --------------------------- | ---------------------- | -------------------------------------- |
+| `mode`           | `"callback" \| "websocket"` | `"websocket"`          | Connection mode                        |
+| `token`          | `string`                    | —                      | Callback Token (required for callback) |
+| `encodingAESKey` | `string`                    | —                      | Encryption Key (required for callback) |
+| `botId`          | `string`                    | —                      | Bot ID (required for websocket)        |
+| `secret`         | `string`                    | —                      | Bot Secret (required for websocket)    |
+| `userName`       | `string`                    | `"WeCom Bot"`          | Bot display name                       |
+| `wsUrl`          | `string`                    | WeCom default          | WebSocket server URL                   |
+| `WebSocket`      | `typeof WebSocket`          | `globalThis.WebSocket` | Custom WebSocket class                 |
+
+### App (Application)
+
+| Option           | Type           | Default            | Description                             |
+| ---------------- | -------------- | ------------------ | --------------------------------------- |
+| `corpId`         | `string`       | —                  | Corporation ID (required)               |
+| `corpSecret`     | `string`       | —                  | Application Secret (required)           |
+| `agentId`        | `number`       | —                  | Application AgentId (required)          |
+| `token`          | `string`       | —                  | Callback Token (required for callbacks) |
+| `encodingAESKey` | `string`       | —                  | Encryption Key (required for callbacks) |
+| `userName`       | `string`       | `"WeCom App"`      | App display name                        |
+| `fetch`          | `typeof fetch` | `globalThis.fetch` | Custom fetch function                   |
+
+## Platform Setup
+
+### Webhook (Group Bot)
+
+1. Add a "Group Bot" in a WeCom group chat
+2. Select "Custom Bot" and create it
+3. Copy the `key` parameter from the Webhook URL
+
+### Bot (Smart Bot)
+
+1. Log in to [WeCom Admin Console](https://work.weixin.qq.com/wework_admin/frame)
+2. Navigate to "App Management" → "Smart Bot" to create a bot
+3. Callback mode: configure the callback URL and provide Token and EncodingAESKey
+4. WebSocket mode: obtain the Bot ID and Secret
+
+### App (Application)
+
+1. Log in to [WeCom Admin Console](https://work.weixin.qq.com/wework_admin/frame)
+2. Navigate to "App Management" → "Custom" to create an app
+3. Obtain CorpId, CorpSecret, and AgentId
+4. For receiving callbacks: configure the "Receive Messages" URL, Token, and EncodingAESKey in the app details
 
 ```bash
 pnpm add @agentor/chat-wecom
 ```
 
-## 快速开始
+## Quick Start
 
-### Webhook (群机器人)
+### Webhook (Group Bot)
 
-单向推送消息到群聊：
+One-way message push to group chats:
 
 ```typescript
 import { createWeComWebhookAdapter } from "@agentor/chat-wecom";
@@ -38,38 +110,14 @@ const threadId = adapter.encodeThreadId({ key: process.env.WECOM_WEBHOOK_KEY! })
 const result = await adapter.postMessage(threadId, "Hello from @agentor/chat-wecom!");
 ```
 
-### Bot — 回调 URL 模式 (智能机器人)
+### Bot — WebSocket Mode (Smart Bot)
 
-通过 HTTP 回调接收和回复消息，需要公网可达的端点：
-
-```typescript
-import { createWeComBotAdapter } from "@agentor/chat-wecom";
-
-const adapter = createWeComBotAdapter({
-  token: process.env.WECOM_BOT_TOKEN!,
-  encodingAESKey: process.env.WECOM_BOT_ENCODING_AES_KEY!,
-});
-
-await adapter.initialize({
-  processMessage: async (_adapter, threadId, factory) => {
-    const message = await factory();
-    await adapter.postMessage(threadId, message.text);
-  },
-});
-
-// 在 HTTP 服务器中处理回调
-// adapter.handleWebhook(request) → Response
-```
-
-### Bot — WebSocket 长连接模式 (智能机器人)
-
-通过 WebSocket 直连企业微信服务，无需公网端点：
+Connect directly to WeCom via WebSocket, no public endpoint required:
 
 ```typescript
 import { createWeComBotAdapter } from "@agentor/chat-wecom";
 
 const adapter = createWeComBotAdapter({
-  mode: "websocket",
   botId: process.env.WECOM_BOT_WS_BOT_ID!,
   secret: process.env.WECOM_BOT_WS_SECRET!,
 });
@@ -81,13 +129,37 @@ await adapter.initialize({
   },
 });
 
-// 断开连接
+// Disconnect
 await adapter.disconnect();
 ```
 
-### App (应用)
+### Bot — Callback URL Mode (Smart Bot)
 
-发送应用消息并接收回调事件：
+Receive and reply to messages via HTTP callback, requires a publicly accessible endpoint:
+
+```typescript
+import { createWeComBotAdapter } from "@agentor/chat-wecom";
+
+const adapter = createWeComBotAdapter({
+  mode: "callback",
+  token: process.env.WECOM_BOT_TOKEN!,
+  encodingAESKey: process.env.WECOM_BOT_ENCODING_AES_KEY!,
+});
+
+await adapter.initialize({
+  processMessage: async (_adapter, threadId, factory) => {
+    const message = await factory();
+    await adapter.postMessage(threadId, message.text);
+  },
+});
+
+// Handle callback in HTTP server
+// adapter.handleWebhook(request) → Response
+```
+
+### App (Application)
+
+Send app messages and receive callback events:
 
 ```typescript
 import { createWeComAppAdapter } from "@agentor/chat-wecom";
@@ -96,126 +168,126 @@ const adapter = createWeComAppAdapter({
   corpId: process.env.WECOM_APP_CORP_ID!,
   corpSecret: process.env.WECOM_APP_CORP_SECRET!,
   agentId: Number(process.env.WECOM_APP_AGENT_ID!),
-  token: process.env.WECOM_APP_TOKEN, // 接收回调时必填
-  encodingAESKey: process.env.WECOM_APP_ENCODING_AES_KEY, // 接收回调时必填
+  token: process.env.WECOM_APP_TOKEN, // Required for receiving callbacks
+  encodingAESKey: process.env.WECOM_APP_ENCODING_AES_KEY, // Required for receiving callbacks
 });
 
-// 发送消息
+// Send message
 const threadId = adapter.encodeThreadId({
   corpId: process.env.WECOM_APP_CORP_ID!,
   userId: "user-id",
 });
 const result = await adapter.postMessage(threadId, "Hello from app!");
 
-// 撤回消息
+// Recall message
 await adapter.deleteMessage(threadId, result.id);
 
-// 获取 Access Token
+// Get Access Token
 const token = await adapter.getAccessToken();
 ```
 
-## 消息类型支持
+## Message Type Support
 
-### 接收消息
+### Receiving Messages
 
-| 消息类型        | Webhook | Bot (回调/WS) | App |
-| --------------- | ------- | ------------- | --- |
-| 文本 (text)     | —       | ✅            | ✅  |
-| 图片 (image)    | —       | ✅            | ✅  |
-| 语音 (voice)    | —       | ✅            | ✅  |
-| 视频 (video)    | —       | ✅            | ✅  |
-| 文件 (file)     | —       | ✅            | —   |
-| 位置 (location) | —       | —             | ✅  |
-| 链接 (link)     | —       | —             | ✅  |
-| 混合 (mixed)    | —       | ✅            | —   |
+| Message Type | Webhook | Bot (CB/WS) | App |
+| ------------ | ------- | ----------- | --- |
+| Text         | —       | ✅          | ✅  |
+| Image        | —       | ✅          | ✅  |
+| Voice        | —       | ✅          | ✅  |
+| Video        | —       | ✅          | ✅  |
+| File         | —       | ✅          | —   |
+| Location     | —       | —           | ✅  |
+| Link         | —       | —           | ✅  |
+| Mixed        | —       | ✅          | —   |
 
-> Webhook 为单向推送，不支持接收消息。App 不支持 file 类型回调（企业微信平台限制），视频和语音需通过企业微信内置录制功能发送。
+> Webhook is one-way push only. App does not support file type callbacks (WeCom platform limitation). Video and voice must be sent through WeCom's built-in recording feature.
 
-### 发送消息
+### Sending Messages
 
-| 消息类型      | Webhook   | Bot (回调) | Bot (WS)    | App         |
-| ------------- | --------- | ---------- | ----------- | ----------- |
-| Markdown      | ✅        | ✅         | ✅          | ✅          |
-| 图片 (image)  | ✅ base64 | —          | ✅ media_id | ✅ media_id |
-| 语音 (voice)  | ✅        | —          | ✅          | ✅          |
-| 视频 (video)  | —         | —          | ✅          | ✅          |
-| 文件 (file)   | ✅        | —          | ✅          | ✅          |
-| Template Card | ✅        | ✅         | ✅          | ✅          |
+| Message Type  | Webhook   | Bot (CB) | Bot (WS)    | App         |
+| ------------- | --------- | -------- | ----------- | ----------- |
+| Markdown      | ✅        | ✅       | ✅          | ✅          |
+| Image         | ✅ base64 | —        | ✅ media_id | ✅ media_id |
+| Voice         | ✅        | —        | ✅          | ✅          |
+| Video         | —         | —        | ✅          | ✅          |
+| File          | ✅        | —        | ✅          | ✅          |
+| Template Card | ✅        | ✅       | ✅          | ✅          |
 
-> Webhook 和 Bot (回调) 的 Template Card 仅支持 `text_notice` 和 `news_notice` 两种类型。Bot (WS) 和 App 支持全部 5 种卡片类型。Bot (WS) 的媒体消息通过 `respond_msg`（回复消息）发送，主动推送 (`send_msg`) 仅支持 Markdown 和 Template Card。
+> Webhook and Bot (CB) Template Cards only support `text_notice` and `news_notice` types. Bot (WS) and App support all 5 card types. Bot (WS) media messages are sent via `respond_msg` (reply); proactive push (`send_msg`) only supports Markdown and Template Card.
 
-## 媒体文件处理
+## Media File Handling
 
-### 媒体上传
+### Media Upload
 
 ```typescript
 import { uploadAppMedia, uploadWebhookMedia } from "@agentor/chat-wecom";
 
-// 应用消息上传
+// App message upload
 const mediaId = await uploadAppMedia(accessToken, {
   data: imageBuffer,
   filename: "image.png",
   mimeType: "image/png",
 });
 
-// Webhook 上传
+// Webhook upload
 const mediaId = await uploadWebhookMedia(webhookKey, {
   data: fileBuffer,
   filename: "document.pdf",
 });
 ```
 
-### 媒体下载
+### Media Download
 
 ```typescript
 import { downloadAppMedia, fetchEncryptedMedia } from "@agentor/chat-wecom";
 
-// 通过 mediaId 下载应用消息媒体
+// Download app message media via mediaId
 const { data, filename } = await downloadAppMedia(accessToken, mediaId);
 
-// 下载并解密 Bot 加密媒体（需要 aeskey）
+// Download and decrypt Bot encrypted media (requires aeskey)
 const { data, filename } = await fetchEncryptedMedia(url, aeskey);
 ```
 
-`postMessage` 会自动处理媒体上传流程：传入 `FileUpload` 时，先上传获取 `media_id`，再发送对应类型的媒体消息。
+`postMessage` handles media upload automatically: when a `FileUpload` is provided, it uploads first to obtain a `media_id`, then sends the corresponding media message type.
 
-## 卡片消息
+## Card Messages
 
-支持将 Chat SDK 的 `CardElement` 自动转换为企业微信 Template Card（5 种卡片类型）：
+Supports automatic conversion from Chat SDK `CardElement` to WeCom Template Card (5 card types):
 
-| 卡片类型               | 说明     |
-| ---------------------- | -------- |
-| `text_notice`          | 文本通知 |
-| `news_notice`          | 图文通知 |
-| `button_interaction`   | 按钮交互 |
-| `vote_interaction`     | 投票交互 |
-| `multiple_interaction` | 多选交互 |
+| Card Type              | Description        |
+| ---------------------- | ------------------ |
+| `text_notice`          | Text notification  |
+| `news_notice`          | News notification  |
+| `button_interaction`   | Button interaction |
+| `vote_interaction`     | Vote interaction   |
+| `multiple_interaction` | Multiple choice    |
 
-卡片类型根据 `CardElement` 内容自动推断：
+Card type is automatically inferred from `CardElement` content:
 
-- 包含多选/下拉 → `multiple_interaction`
-- 包含单选 → `vote_interaction`
-- 包含按钮 → `button_interaction`
-- 包含图片 → `news_notice`
-- 默认 → `text_notice`
+- Contains multi-select/dropdown → `multiple_interaction`
+- Contains single-select → `vote_interaction`
+- Contains buttons → `button_interaction`
+- Contains image → `news_notice`
+- Default → `text_notice`
 
 ```typescript
 import type { CardElement } from "chat";
 
 const card: CardElement = {
   type: "card",
-  title: "审批通知",
-  subtitle: "请审批以下申请",
+  title: "Approval Notice",
+  subtitle: "Please review the following request",
   children: [
     {
       type: "fields",
-      children: [{ type: "field", label: "申请人", value: "张三" }],
+      children: [{ type: "field", label: "Applicant", value: "John" }],
     },
     {
       type: "actions",
       children: [
-        { type: "button", label: "同意", style: "primary", id: "approve" },
-        { type: "button", label: "拒绝", style: "danger", id: "reject" },
+        { type: "button", label: "Approve", style: "primary", id: "approve" },
+        { type: "button", label: "Reject", style: "danger", id: "reject" },
       ],
     },
   ],
@@ -224,9 +296,9 @@ const card: CardElement = {
 await adapter.postMessage(threadId, card);
 ```
 
-## 加解密
+## Encryption
 
-所有回调通信使用 AES-256-CBC 加密和 SHA1 签名校验：
+All callback communication uses AES-256-CBC encryption and SHA1 signature verification:
 
 ```typescript
 import { encrypt, decrypt, calculateSignature, verifySignature } from "@agentor/chat-wecom";
@@ -238,14 +310,14 @@ const signature = await calculateSignature(token, timestamp, nonce, encrypted);
 const valid = await verifySignature(token, timestamp, nonce, encrypted, signature);
 ```
 
-## 不支持的操作
+## Unsupported Operations
 
-以下操作会抛出 `NotImplementedError`：
+The following operations throw `NotImplementedError`:
 
-- `editMessage` — 所有适配器均不支持
-- `deleteMessage` — 仅 App 适配器支持
-- `fetchMessages` / `fetchThread` — 不支持
-- `addReaction` / `removeReaction` — 不支持
+- `editMessage` — Not supported by any adapter
+- `deleteMessage` — Only supported by the App adapter
+- `fetchMessages` / `fetchThread` — Not supported
+- `addReaction` / `removeReaction` — Not supported
 
 ## License
 

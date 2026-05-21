@@ -1,7 +1,7 @@
 // https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/send-receive/send.html
 // QQ Bot: 支持 Webhook 回调和 WebSocket 长连接两种模式
 
-import { extractFiles, extractPostableAttachments } from "@chat-adapter/shared";
+import { extractFiles, extractPostableAttachments, ValidationError } from "@chat-adapter/shared";
 import {
   Message,
   NotImplementedError,
@@ -24,6 +24,7 @@ import type {
   QQBotCallbackConfig,
   QQBotConfig,
   QQBotSendMessageResponse,
+  QQBotWebSocketConfig,
   QQC2CMessageEvent,
   QQChannelMessageEvent,
   QQGroupMessageEvent,
@@ -32,7 +33,7 @@ import type {
 } from "../types";
 import { QQBotOpCode } from "../types";
 import { getAppAccessToken, qqBotRequest, uploadRichMedia } from "../utils";
-import { QQBotWebSocketManager } from "./bot-ws";
+import { QQBotWebSocketManager } from "./bot-websocket";
 
 export interface QQBotThreadId {
   scene: QQMessageScene;
@@ -46,7 +47,7 @@ export function isCallbackConfig(config: QQBotConfig): config is QQBotCallbackCo
 }
 
 export class QQBotAdapter implements Adapter<QQBotThreadId, BotRawMessage> {
-  readonly name = "qq-bot";
+  readonly name: string;
   readonly userName: string;
 
   private chat: ChatInstance | null = null;
@@ -60,16 +61,24 @@ export class QQBotAdapter implements Adapter<QQBotThreadId, BotRawMessage> {
   private readonly msgSeqCounters = new Map<string, number>();
 
   constructor(private readonly config: QQBotConfig) {
+    this.name = isCallbackConfig(config) ? "qq-bot-callback" : "qq-bot-websocket";
     this.userName = config.userName ?? "QQ Bot";
   }
 
   encodeThreadId(data: QQBotThreadId): string {
-    return `qq-bot:${data.scene}:${data.id}`;
+    const prefix = isCallbackConfig(this.config) ? "qq-bot-callback" : "qq-bot-websocket";
+    return `${prefix}:${data.scene}:${data.id}`;
   }
 
   decodeThreadId(threadId: string): QQBotThreadId {
-    const parts = threadId.split(":");
-    return { scene: parts[1] as QQMessageScene, id: parts.slice(2).join(":") };
+    // Handle "qq-bot-callback:scene:id" and "qq-bot-websocket:scene:id"
+    const firstColon = threadId.indexOf(":");
+    const rest = threadId.slice(firstColon + 1);
+    const secondColon = rest.indexOf(":");
+    return {
+      scene: rest.slice(0, secondColon) as QQMessageScene,
+      id: rest.slice(secondColon + 1),
+    };
   }
 
   channelIdFromThreadId(threadId: string): string {
@@ -661,6 +670,44 @@ function resolveMediaUrl(url: string): string {
   return `${QQ_MEDIA_CDN}${url.startsWith("/") ? "" : "/"}${url}`;
 }
 
-export function createQQBotAdapter(config: QQBotConfig) {
-  return new QQBotAdapter(config);
+export type QQBotFactoryConfig = Partial<Omit<QQBotCallbackConfig, "mode">> &
+  Partial<Omit<QQBotWebSocketConfig, "mode">> & { mode?: "callback" | "websocket" };
+
+export function createQQBotAdapter(config?: QQBotFactoryConfig): QQBotAdapter {
+  const appId = config?.appId ?? process.env.QQ_BOT_APP_ID;
+  const clientSecret = config?.clientSecret ?? process.env.QQ_BOT_CLIENT_SECRET;
+
+  if (!appId) {
+    throw new ValidationError(
+      "qq-bot",
+      "appId is required. Pass it in config or set QQ_BOT_APP_ID.",
+    );
+  }
+  if (!clientSecret) {
+    throw new ValidationError(
+      "qq-bot",
+      "clientSecret is required. Pass it in config or set QQ_BOT_CLIENT_SECRET.",
+    );
+  }
+
+  if (config?.mode === "callback") {
+    return new QQBotAdapter({
+      appId,
+      clientSecret,
+      userName: config.userName,
+      fetch: config.fetch,
+    });
+  }
+
+  return new QQBotAdapter({
+    mode: "websocket",
+    appId,
+    clientSecret,
+    intents: config?.intents,
+    sandbox: config?.sandbox,
+    userName: config?.userName,
+    wsUrl: config?.wsUrl,
+    WebSocket: config?.WebSocket,
+    fetch: config?.fetch,
+  });
 }

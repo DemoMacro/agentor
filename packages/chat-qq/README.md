@@ -4,35 +4,63 @@
 ![npm downloads](https://img.shields.io/npm/dw/@agentor/chat-qq)
 ![npm license](https://img.shields.io/npm/l/@agentor/chat-qq)
 
-> [Chat SDK](https://github.com/DemoMacro/agentor) 适配器，用于 [QQ Bot (QQ机器人)](https://bot.q.qq.com/) 消息集成。
+**[English](./README.md)** | [中文](./README.zh-CN.md)
 
-## 功能特性
+> [Chat SDK](https://github.com/DemoMacro/agentor) adapter for [QQ Bot (QQ Robot)](https://bot.q.qq.com/) messaging integration.
 
-- **WebSocket 长连接** — 直连 QQ Bot Gateway，无需公网端点
-- **Webhook (回调 URL)** — 通过 HTTP 回调接收事件，支持 Ed25519 签名验证
-- **多场景支持** — QQ 单聊 (C2C)、QQ 群聊、文字子频道、频道私信
-- **富媒体支持** — 图片、视频、语音、文件的上传与发送
-- **自动重连** — 指数退避重连 + Session 恢复 (Resume)
+## Features
 
-> **注意：** 成功配置 HTTPS 回调地址之后，WebSocket 长连接模式将不再支持，两者互斥。
+- **WebSocket Long Connection** — Direct connection to QQ Bot Gateway, no public endpoint required
+- **Webhook (Callback URL)** — Receive events via HTTP callback with Ed25519 signature verification
+- **Multi-scene Support** — QQ DM (C2C), QQ Group, Text Channel, Channel DM
+- **Rich Media** — Upload and send images, videos, voice, and files
+- **Auto Reconnect** — Exponential backoff reconnection + Session Resume
 
-## 安装
+> **Note:** Once an HTTPS callback URL is configured, WebSocket mode will no longer be available — the two are mutually exclusive.
+
+## Environment Variables
+
+| Variable               | Required | Description           |
+| ---------------------- | -------- | --------------------- |
+| `QQ_BOT_APP_ID`        | Yes      | QQ Bot application ID |
+| `QQ_BOT_CLIENT_SECRET` | Yes      | QQ Bot client secret  |
+
+## Configuration
+
+| Option         | Type                        | Default                                        | Description                         |
+| -------------- | --------------------------- | ---------------------------------------------- | ----------------------------------- |
+| `mode`         | `"callback" \| "websocket"` | `"websocket"`                                  | Connection mode                     |
+| `appId`        | `string`                    | —                                              | Application ID (required)           |
+| `clientSecret` | `string`                    | —                                              | Client secret (required)            |
+| `intents`      | `number`                    | `PUBLIC_GUILD_MESSAGES \| GROUP_AND_C2C_EVENT` | Event intent bitmask                |
+| `sandbox`      | `boolean`                   | `false`                                        | Use sandbox environment (websocket) |
+| `userName`     | `string`                    | `"QQ Bot"`                                     | Bot display name                    |
+| `wsUrl`        | `string`                    | QQ Bot default                                 | WebSocket gateway URL               |
+| `WebSocket`    | `typeof WebSocket`          | `globalThis.WebSocket`                         | Custom WebSocket class              |
+| `fetch`        | `typeof fetch`              | `globalThis.fetch`                             | Custom fetch function               |
+
+## Platform Setup
+
+1. Log in to [QQ Open Platform](https://q.qq.com/)
+2. Create a bot application and obtain App ID and Client Secret
+3. WebSocket mode: no extra configuration needed, connect directly
+4. Webhook mode: configure an HTTPS callback URL in the app details
+   - Once configured, WebSocket mode becomes unavailable (mutually exclusive)
 
 ```bash
 pnpm add @agentor/chat-qq
 ```
 
-## 快速开始
+## Quick Start
 
-### WebSocket 长连接模式
+### WebSocket Mode
 
-通过 WebSocket 直连 QQ Bot 服务，无需公网端点：
+Connect directly to QQ Bot service via WebSocket, no public endpoint required:
 
 ```typescript
 import { createQQBotAdapter } from "@agentor/chat-qq";
 
 const adapter = createQQBotAdapter({
-  mode: "websocket",
   appId: process.env.QQ_BOT_APP_ID!,
   clientSecret: process.env.QQ_BOT_CLIENT_SECRET!,
 });
@@ -44,19 +72,20 @@ await adapter.initialize({
   },
 });
 
-// 断开连接
+// Disconnect
 await adapter.disconnect();
 ```
 
-### Webhook 回调模式
+### Webhook Callback Mode
 
-通过 HTTP 回调接收和回复消息，需要公网可达的端点：
+Receive and reply to messages via HTTP callback, requires a publicly accessible endpoint:
 
 ```typescript
 import { createQQBotAdapter } from "@agentor/chat-qq";
 import { H3, fromWebHandler, serve } from "h3";
 
 const adapter = createQQBotAdapter({
+  mode: "callback",
   appId: process.env.QQ_BOT_APP_ID!,
   clientSecret: process.env.QQ_BOT_CLIENT_SECRET!,
 });
@@ -68,7 +97,7 @@ await adapter.initialize({
   },
 });
 
-// 在 HTTP 服务器中处理回调
+// Handle callback in HTTP server
 const app = new H3();
 app.all(
   "/webhook",
@@ -77,79 +106,79 @@ app.all(
 serve(app, { port: 3000 });
 ```
 
-## 消息类型支持
+## Message Type Support
 
-### 接收消息
+### Receiving Messages
 
-| 消息类型 | WebSocket | Webhook |
-| -------- | --------- | ------- |
-| 文本     | ✅        | ✅      |
-| 图片     | ✅        | ✅      |
-| 视频     | ✅        | ✅      |
-| 语音     | ✅        | ✅      |
-| 文件     | ✅        | ✅      |
+| Message Type | WebSocket | Webhook |
+| ------------ | --------- | ------- |
+| Text         | ✅        | ✅      |
+| Image        | ✅        | ✅      |
+| Video        | ✅        | ✅      |
+| Voice        | ✅        | ✅      |
+| File         | ✅        | ✅      |
 
-### 发送消息
+### Sending Messages
 
-| 消息类型     | C2C 单聊 | 群聊 | 文字子频道 | 频道私信 |
-| ------------ | -------- | ---- | ---------- | -------- |
-| 文本         | ✅       | ✅   | ✅         | ✅       |
-| 图片         | ✅       | ✅   | ✅         | ✅       |
-| 视频         | ✅       | ✅   | ✅         | ✅       |
-| 语音         | ✅       | ✅   | —          | —        |
-| 文件         | ✅       | —    | —          | —        |
-| Markdown     | ✅       | ✅   | ✅         | ✅       |
-| 富媒体 (URL) | ✅       | ✅   | ✅         | ✅       |
+| Message Type     | C2C DM | Group | Text Channel | Channel DM |
+| ---------------- | ------ | ----- | ------------ | ---------- |
+| Text             | ✅     | ✅    | ✅           | ✅         |
+| Image            | ✅     | ✅    | ✅           | ✅         |
+| Video            | ✅     | ✅    | ✅           | ✅         |
+| Voice            | ✅     | ✅    | —            | —          |
+| File             | ✅     | —     | —            | —          |
+| Markdown         | ✅     | ✅    | ✅           | ✅         |
+| Rich Media (URL) | ✅     | ✅    | ✅           | ✅         |
 
-> 群聊场景的文件上传 (file_type=4) 暂不开放。文字子频道和频道私信无独立的上传接口，但支持通过 `msg_type: 7` + `media` 发送图片和视频。
+> File upload (file_type=4) in group chats is not currently available. Text channels and channel DMs do not have a standalone upload API, but support sending images and videos via `msg_type: 7` + `media`.
 
-## 媒体文件处理
+## Media File Handling
 
-`postMessage` 会自动处理媒体上传流程：
+`postMessage` handles media upload automatically:
 
-- **本地文件** (`FileUpload`)：先转 base64 上传获取 `file_info`，再发送富媒体消息
-- **URL 附件** (`Attachment` with URL)：先通过 URL 上传获取 `file_info`，再发送富媒体消息
-- 不支持的场景会自动降级为文本消息
+- **Local files** (`FileUpload`): convert to base64, upload to obtain `file_info`, then send as rich media message
+- **URL attachments** (`Attachment` with URL): upload via URL to obtain `file_info`, then send as rich media message
+- Unsupported scenarios automatically fall back to text messages
 
 ```typescript
-// 发送本地文件
+// Send a local file
 await adapter.postMessage(threadId, {
-  text: "文档",
+  text: "Document",
   files: [{ data: buffer, filename: "report.xlsx", mimeType: "application/vnd.ms-excel" }],
 });
 
-// 转发收到的图片
+// Forward a received image
 await adapter.postMessage(threadId, {
   markdown: message.text || " ",
   attachments: message.attachments,
 });
 ```
 
-## 安全
+## Security
 
-Webhook 模式使用 Ed25519 签名验证：
+Webhook mode uses Ed25519 signature verification:
 
-- **回调地址验证** (OpCode 13)：用私钥签名 `event_ts + plain_token`
-- **事件推送验证** (OpCode 0)：用公钥验证 `X-Signature-Ed25519` 请求头
+- **Callback URL verification** (OpCode 13): sign `event_ts + plain_token` with private key
+- **Event push verification** (OpCode 0): verify `X-Signature-Ed25519` request header with public key
 
 ```typescript
 import { signCallbackValidation, verifyEventSignature } from "@agentor/chat-qq";
 
-// 回调地址验证
+// Callback URL validation
 const signature = signCallbackValidation(clientSecret, plainToken, eventTs);
 
-// 事件签名验证
+// Event signature verification
 const valid = verifyEventSignature(clientSecret, signatureHex, timestamp, body);
 ```
 
-## 不支持的操作
+## Unsupported Operations
 
-以下操作会抛出 `NotImplementedError`：
+The following operations throw `NotImplementedError`:
 
-- `editMessage` — 不支持
-- `deleteMessage` — 不支持
-- `fetchMessages` / `fetchThread` — 不支持
-- `addReaction` / `removeReaction` — 不支持
+- `editMessage` — Not supported
+- `deleteMessage` — Not supported
+- `fetchMessages` / `fetchThread` — Not supported
+- `addReaction` / `removeReaction` — Not supported
 
 ## License
 

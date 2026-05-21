@@ -5,5 +5,5 @@ export * from "./types";
 export * from "./crypto";
 export * from "./utils";
 export * from "./format";
-export * from "./adapters/bot-ws";
+export * from "./adapters/bot-websocket";
 export * from "./adapters/bot";

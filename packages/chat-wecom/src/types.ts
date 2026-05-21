@@ -365,6 +365,12 @@ export interface WeComMediaUploadResponse extends WeComBaseResponse {
   created_at?: string;
 }
 
+// --- Bot Thread ID ---
+
+export interface WeComBotThreadId {
+  chatId: string;
+}
+
 // --- Config types ---
 
 export interface WeComWebhookConfig {
