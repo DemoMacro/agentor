@@ -182,7 +182,7 @@ class BotWebSocketManager {
       const chunk = buffer.subarray(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
       await this.sendAndReceive("aibot_upload_media_chunk", {
         upload_id,
-        chunk_index: i,
+        chunk_index: String(i),
         base64_data: chunk.toString("base64"),
       });
     }
@@ -197,6 +197,7 @@ class BotWebSocketManager {
     const body: Record<string, unknown> = {
       chatid: chatId,
       msgtype,
+      chat_type: chatId ? 2 : 1,
     };
     if (msgtype === "template_card") {
       body.template_card = content;
@@ -393,7 +394,13 @@ export class WeComBotWebSocketAdapter implements Adapter<WeComBotThreadId, BotRa
 
   parseMessage(raw: WsBotCallbackBody): Message<BotRawMessage> {
     const chatId = raw.chatid ?? raw.from.userid;
-    const text = raw.text?.content ?? raw.voice?.content ?? "";
+    // mixed 消息：提取文本子项
+    let text = raw.text?.content ?? raw.voice?.content ?? "";
+    if (!text && raw.mixed?.msg_item) {
+      const textItem = raw.mixed.msg_item.find((i) => i.msgtype === "text");
+      const textObj = textItem?.text as { content?: string } | undefined;
+      text = textObj?.content ?? "";
+    }
     return new Message({
       id: raw.msgid,
       threadId: this.encodeThreadId({ chatId }),
@@ -435,8 +442,6 @@ function parseBotAttachments(raw: WsBotCallbackBody): Attachment[] {
     attachments.push({
       type: "file",
       url: raw.file.url,
-      name: raw.file.filename,
-      size: raw.file.filesize,
       ...(raw.file.aeskey ? { fetchMetadata: { aeskey: raw.file.aeskey } } : {}),
     });
   }
@@ -446,6 +451,19 @@ function parseBotAttachments(raw: WsBotCallbackBody): Attachment[] {
       url: raw.video.url,
       ...(raw.video.aeskey ? { fetchMetadata: { aeskey: raw.video.aeskey } } : {}),
     });
+  }
+  // mixed 消息：从 msg_item 中提取图片子项
+  if (raw.mixed?.msg_item) {
+    for (const item of raw.mixed.msg_item) {
+      if (item.msgtype === "image" && item.image) {
+        const img = item.image as { url: string; aeskey?: string };
+        attachments.push({
+          type: "image",
+          url: img.url,
+          ...(img.aeskey ? { fetchMetadata: { aeskey: img.aeskey } } : {}),
+        });
+      }
+    }
   }
   return attachments;
 }

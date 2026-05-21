@@ -27,6 +27,7 @@ import type {
   QQBotWebSocketConfig,
   QQC2CMessageEvent,
   QQChannelMessageEvent,
+  QQDirectMessageEvent,
   QQGroupMessageEvent,
   QQMessageEvent,
   QQMessageScene,
@@ -496,7 +497,10 @@ export class QQBotAdapter implements Adapter<QQBotThreadId, BotRawMessage> {
         userId,
         userName,
         fullName: userName,
-        isBot: false,
+        isBot:
+          "bot" in (raw as QQChannelMessageEvent).author
+            ? !!(raw as QQChannelMessageEvent).author.bot
+            : false,
         isMe: false,
       },
       metadata: { dateSent: new Date(raw.timestamp), edited: false },
@@ -564,8 +568,8 @@ function parseEventType(
       return { threadId: encodeThreadId(prefix, "channel", e.channel_id), event };
     }
     case "DIRECT_MESSAGE_CREATE": {
-      const e = event as QQChannelMessageEvent;
-      return { threadId: encodeThreadId(prefix, "direct", e.channel_id), event };
+      const e = event as QQDirectMessageEvent;
+      return { threadId: encodeThreadId(prefix, "direct", e.guild_id), event };
     }
     default:
       return null;
@@ -587,9 +591,20 @@ function extractMessageMeta(
     return { threadId: encodeThreadId(prefix, "group", e.group_openid), userId: id, userName: id };
   }
   // 频道/私信: 顶层有 channel_id 和 guild_id
+  // 区分方式: 频道消息有 seq 字段，私信没有
   if ("channel_id" in raw) {
+    const isDm = !("seq" in raw);
+    if (isDm) {
+      const e = raw as QQDirectMessageEvent;
+      const userId = e.author.id ?? "";
+      return {
+        threadId: encodeThreadId(prefix, "direct", e.guild_id),
+        userId,
+        userName: e.author.username ?? userId,
+      };
+    }
     const e = raw as QQChannelMessageEvent;
-    const userId = e.author.id ?? e.author.user_openid ?? "";
+    const userId = e.author.id ?? "";
     return {
       threadId: encodeThreadId(prefix, "channel", e.channel_id),
       userId,

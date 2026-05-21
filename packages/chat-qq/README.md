@@ -1,8 +1,8 @@
 # @agentor/chat-qq
 
-![npm version](https://img.shields.io/npm/v/@agentor/chat-qq)
-![npm downloads](https://img.shields.io/npm/dw/@agentor/chat-qq)
-![npm license](https://img.shields.io/npm/l/@agentor/chat-qq)
+[![npm version](https://img.shields.io/npm/v/@agentor/chat-qq)](https://www.npmjs.com/package/@agentor/chat-qq)
+[![npm downloads](https://img.shields.io/npm/dm/@agentor/chat-qq)](https://www.npmjs.com/package/@agentor/chat-qq)
+[![npm license](https://img.shields.io/npm/l/@agentor/chat-qq)](https://www.npmjs.com/package/@agentor/chat-qq)
 
 **[English](./README.md)** | [中文](./README.zh-CN.md)
 
@@ -22,13 +22,13 @@
 
 ```bash
 # Install with npm
-npm install @agentor/chat-qq
+npm install chat @agentor/chat-qq
 
 # Install with yarn
-yarn add @agentor/chat-qq
+yarn add chat @agentor/chat-qq
 
 # Install with pnpm
-pnpm add @agentor/chat-qq
+pnpm add chat @agentor/chat-qq
 ```
 
 ## Quick Start

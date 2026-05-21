@@ -173,6 +173,7 @@ describe("QQBotAdapter parseMessage", () => {
       channel_id: "channel_456",
       guild_id: "guild_789",
       timestamp: "1700000000",
+      seq: 1,
       attachments: [],
     };
     const msg = adapter.parseMessage(raw);

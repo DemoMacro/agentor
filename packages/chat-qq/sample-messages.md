@@ -25,12 +25,12 @@
 }
 ```
 
-## Webhook — 事件推送 (OpCode 0)
+## 事件推送 (OpCode 0)
 
-事件推送请求携带 Ed25519 签名头：
+Webhook 回调携带 Ed25519 签名头，WebSocket 以 Dispatch 帧推送：
 
-- `X-Signature-Ed25519`: 签名 hex
-- `X-Signature-Timestamp`: 时间戳
+- `X-Signature-Ed25519`: 签名 hex (仅 Webhook)
+- `X-Signature-Timestamp`: 时间戳 (仅 Webhook)
 
 ### C2C 单聊消息
 
@@ -113,6 +113,7 @@
     "author": {
       "id": "uid_002",
       "username": "测试用户",
+      "avatar": "https://thirdqq.qlogo.cn/0",
       "bot": false
     },
     "content": "@bot help",
@@ -148,6 +149,7 @@
     "author": {
       "id": "uid_003",
       "username": "私信用户",
+      "avatar": "https://thirdqq.qlogo.cn/0",
       "bot": false
     },
     "content": "私聊内容",
@@ -182,6 +184,7 @@
 ```json
 {
   "op": 0,
+  "s": 1,
   "t": "READY",
   "d": {
     "version": 1,

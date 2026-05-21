@@ -250,11 +250,12 @@ export interface WsBotCallbackBody {
   text?: { content: string };
   image?: { url: string; aeskey?: string };
   voice?: { content: string };
-  file?: { url: string; aeskey?: string; filename?: string; filesize?: number };
+  file?: { url: string; aeskey?: string };
   video?: { url: string; aeskey?: string };
   mixed?: { msg_item: Array<{ msgtype: string; [key: string]: unknown }> };
   stream?: { id: string };
   event?: { eventtype: string; [key: string]: unknown };
+  quote?: { msgtype: string; [key: string]: unknown };
 }
 
 // --- App (应用) message types ---

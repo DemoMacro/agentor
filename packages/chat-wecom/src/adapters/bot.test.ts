@@ -165,15 +165,13 @@ describe("WeComBotCallbackAdapter parseMessage", () => {
       file: {
         url: "https://example.com/doc.pdf",
         aeskey: "key456",
-        filename: "report.pdf",
-        filesize: 1024,
       },
     };
     const msg = adapter.parseMessage(raw);
     expect(msg.attachments).toHaveLength(1);
     expect(msg.attachments[0].type).toBe("file");
-    expect(msg.attachments[0].name).toBe("report.pdf");
-    expect(msg.attachments[0].size).toBe(1024);
+    expect(msg.attachments[0].url).toBe("https://example.com/doc.pdf");
+    expect(msg.attachments[0].fetchMetadata?.aeskey).toBe("key456");
   });
 
   it("parses voice message with transcription text", () => {

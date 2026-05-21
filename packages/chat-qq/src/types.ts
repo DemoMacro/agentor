@@ -96,18 +96,26 @@ export interface QQGroupMessageEvent {
   attachments?: QQMessageAttachment[];
 }
 
-// 频道 @消息事件 (AT_MESSAGE_CREATE)
+// 频道 @消息事件 (AT_MESSAGE_CREATE / MESSAGE_CREATE)
 export interface QQChannelMessageEvent {
   id: string;
   author: {
-    user_openid?: string;
     id?: string;
     username?: string;
+    avatar?: string;
+    bot?: boolean;
   };
   content: string;
   channel_id: string;
   guild_id: string;
   timestamp: string;
+  seq?: number;
+  seq_in_channel?: string;
+  member?: {
+    nick?: string;
+    joined_at?: string;
+    roles?: string[];
+  };
   attachments?: QQMessageAttachment[];
   mentions?: Array<{ id: string; username: string }>;
 }
@@ -118,11 +126,17 @@ export interface QQDirectMessageEvent {
   author: {
     id: string;
     username?: string;
+    avatar?: string;
+    bot?: boolean;
   };
   content: string;
   channel_id: string;
   guild_id: string;
   timestamp: string;
+  member?: {
+    joined_at?: string;
+    roles?: string[];
+  };
   attachments?: QQMessageAttachment[];
 }
 

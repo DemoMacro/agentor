@@ -1,8 +1,8 @@
 # @agentor/chat-wecom
 
-![npm version](https://img.shields.io/npm/v/@agentor/chat-wecom)
-![npm downloads](https://img.shields.io/npm/dw/@agentor/chat-wecom)
-![npm license](https://img.shields.io/npm/l/@agentor/chat-wecom)
+[![npm version](https://img.shields.io/npm/v/@agentor/chat-wecom)](https://www.npmjs.com/package/@agentor/chat-wecom)
+[![npm downloads](https://img.shields.io/npm/dm/@agentor/chat-wecom)](https://www.npmjs.com/package/@agentor/chat-wecom)
+[![npm license](https://img.shields.io/npm/l/@agentor/chat-wecom)](https://www.npmjs.com/package/@agentor/chat-wecom)
 
 [English](./README.md) | **[中文](./README.zh-CN.md)**
 
@@ -21,13 +21,13 @@
 
 ```bash
 # Install with npm
-npm install @agentor/chat-wecom
+npm install chat @agentor/chat-wecom
 
 # Install with yarn
-yarn add @agentor/chat-wecom
+yarn add chat @agentor/chat-wecom
 
 # Install with pnpm
-pnpm add @agentor/chat-wecom
+pnpm add chat @agentor/chat-wecom
 ```
 
 ## 快速开始

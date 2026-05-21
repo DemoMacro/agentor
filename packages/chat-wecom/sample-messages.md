@@ -25,11 +25,9 @@ GET/POST /webhook?msg_signature=xxx&timestamp=1234&nonce=abc&echostr=optional
   "chatid": "chat_001",
   "chattype": "group",
   "from": {
-    "userid": "user001",
-    "corpid": "corp123"
+    "userid": "user001"
   },
   "response_url": "https://qyapi.weixin.qq.com/cgi-bin/aibot/response?response_code=xxx",
-  "create_time": 1700000000,
   "msgtype": "text",
   "text": {
     "content": "你好"
@@ -48,7 +46,6 @@ GET/POST /webhook?msg_signature=xxx&timestamp=1234&nonce=abc&echostr=optional
     "userid": "user002"
   },
   "response_url": "https://qyapi.weixin.qq.com/cgi-bin/aibot/response?response_code=xxx",
-  "create_time": 1700000001,
   "msgtype": "image",
   "image": {
     "url": "https://example.com/image.enc"
@@ -71,7 +68,6 @@ GET/POST /webhook?msg_signature=xxx&timestamp=1234&nonce=abc&echostr=optional
     "userid": "user_voice"
   },
   "response_url": "https://qyapi.weixin.qq.com/cgi-bin/aibot/response?response_code=xxx",
-  "create_time": 1700000003,
   "msgtype": "voice",
   "voice": {
     "content": "语音转文本的内容"
@@ -90,7 +86,6 @@ GET/POST /webhook?msg_signature=xxx&timestamp=1234&nonce=abc&echostr=optional
     "userid": "user_file"
   },
   "response_url": "https://qyapi.weixin.qq.com/cgi-bin/aibot/response?response_code=xxx",
-  "create_time": 1700000004,
   "msgtype": "file",
   "file": {
     "url": "https://example.com/file.enc"
@@ -109,7 +104,6 @@ GET/POST /webhook?msg_signature=xxx&timestamp=1234&nonce=abc&echostr=optional
     "userid": "user_video"
   },
   "response_url": "https://qyapi.weixin.qq.com/cgi-bin/aibot/response?response_code=xxx",
-  "create_time": 1700000005,
   "msgtype": "video",
   "video": {
     "url": "https://example.com/video.enc"
@@ -129,7 +123,6 @@ GET/POST /webhook?msg_signature=xxx&timestamp=1234&nonce=abc&echostr=optional
     "userid": "user003"
   },
   "response_url": "https://qyapi.weixin.qq.com/cgi-bin/aibot/response?response_code=xxx",
-  "create_time": 1700000002,
   "msgtype": "mixed",
   "mixed": {
     "msg_item": [
@@ -166,10 +159,59 @@ GET/POST /webhook?msg_signature=xxx&timestamp=1234&nonce=abc&echostr=optional
     "from": {
       "userid": "user004"
     },
-    "create_time": 1700000003,
     "msgtype": "text",
     "text": {
       "content": "@bot 帮我查一下"
+    }
+  }
+}
+```
+
+> WebSocket 模式下 `image`、`file`、`video` 结构体会额外返回 `aeskey`（每条消息唯一），不同于回调模式使用统一的 EncodingAESKey。
+
+## Bot WebSocket 模式 — 图片消息帧
+
+```json
+{
+  "cmd": "aibot_msg_callback",
+  "headers": {
+    "req_id": "req_002"
+  },
+  "body": {
+    "msgid": "msg_ws_img_001",
+    "aibotid": "bot_abc",
+    "chattype": "single",
+    "from": {
+      "userid": "user005"
+    },
+    "msgtype": "image",
+    "image": {
+      "url": "https://example.com/ws-image.enc",
+      "aeskey": "unique_aeskey_for_this_image"
+    }
+  }
+}
+```
+
+## Bot WebSocket 模式 — 文件消息帧
+
+```json
+{
+  "cmd": "aibot_msg_callback",
+  "headers": {
+    "req_id": "req_003"
+  },
+  "body": {
+    "msgid": "msg_ws_file_001",
+    "aibotid": "bot_abc",
+    "chattype": "single",
+    "from": {
+      "userid": "user006"
+    },
+    "msgtype": "file",
+    "file": {
+      "url": "https://example.com/ws-file.enc",
+      "aeskey": "unique_aeskey_for_this_file"
     }
   }
 }

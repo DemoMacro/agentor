@@ -182,7 +182,13 @@ export class WeComBotCallbackAdapter implements Adapter<WeComBotThreadId, BotRaw
 
   parseMessage(raw: WsBotCallbackBody): Message<BotRawMessage> {
     const chatId = raw.chatid ?? raw.from.userid;
-    const text = raw.text?.content ?? raw.voice?.content ?? "";
+    // mixed 消息：提取文本子项
+    let text = raw.text?.content ?? raw.voice?.content ?? "";
+    if (!text && raw.mixed?.msg_item) {
+      const textItem = raw.mixed.msg_item.find((i) => i.msgtype === "text");
+      const textObj = textItem?.text as { content?: string } | undefined;
+      text = textObj?.content ?? "";
+    }
     return new Message({
       id: raw.msgid,
       threadId: this.encodeThreadId({ chatId }),
@@ -197,7 +203,7 @@ export class WeComBotCallbackAdapter implements Adapter<WeComBotThreadId, BotRaw
         isMe: false,
       },
       metadata: { dateSent: new Date(), edited: false },
-      attachments: parseBotAttachments(raw),
+      attachments: parseBotAttachments(raw, this.config.encodingAESKey),
     });
   }
 
@@ -208,31 +214,46 @@ export class WeComBotCallbackAdapter implements Adapter<WeComBotThreadId, BotRaw
   async disconnect(): Promise<void> {}
 }
 
-function parseBotAttachments(raw: WsBotCallbackBody): Attachment[] {
+function parseBotAttachments(raw: WsBotCallbackBody, encodingAESKey?: string): Attachment[] {
   const attachments: Attachment[] = [];
   if (raw.image) {
+    const aeskey = raw.image.aeskey ?? encodingAESKey;
     attachments.push({
       type: "image",
       url: raw.image.url,
-      ...(raw.image.aeskey ? { fetchMetadata: { aeskey: raw.image.aeskey } } : {}),
+      ...(aeskey ? { fetchMetadata: { aeskey } } : {}),
     });
   }
   // voice 只提供转录文本 (voice.content)，不含音频 URL，不创建 attachment
   if (raw.file) {
+    const aeskey = raw.file.aeskey ?? encodingAESKey;
     attachments.push({
       type: "file",
       url: raw.file.url,
-      name: raw.file.filename,
-      size: raw.file.filesize,
-      ...(raw.file.aeskey ? { fetchMetadata: { aeskey: raw.file.aeskey } } : {}),
+      ...(aeskey ? { fetchMetadata: { aeskey } } : {}),
     });
   }
   if (raw.video) {
+    const aeskey = raw.video.aeskey ?? encodingAESKey;
     attachments.push({
       type: "video",
       url: raw.video.url,
-      ...(raw.video.aeskey ? { fetchMetadata: { aeskey: raw.video.aeskey } } : {}),
+      ...(aeskey ? { fetchMetadata: { aeskey } } : {}),
     });
+  }
+  // mixed 消息：从 msg_item 中提取图片子项
+  if (raw.mixed?.msg_item) {
+    for (const item of raw.mixed.msg_item) {
+      if (item.msgtype === "image" && item.image) {
+        const img = item.image as { url: string; aeskey?: string };
+        const aeskey = img.aeskey ?? encodingAESKey;
+        attachments.push({
+          type: "image",
+          url: img.url,
+          ...(aeskey ? { fetchMetadata: { aeskey } } : {}),
+        });
+      }
+    }
   }
   return attachments;
 }
