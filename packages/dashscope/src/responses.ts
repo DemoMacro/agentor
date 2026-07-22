@@ -622,6 +622,78 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV3 {
 
     let finishReason: LanguageModelV3FinishReason | undefined;
     let usage: LanguageModelV3Usage | undefined;
+    let hasToolCall = false;
+
+    // DashScope streams each output item as added → (deltas) → done. ai-sdk
+    // consumers (e.g. toUIMessageStreamResponse) require every text/reasoning
+    // delta to be preceded by its matching start event, so we track the active
+    // part ids and emit start/end pairs around the deltas.
+    let activeTextId: string | undefined;
+    let activeReasoningId: string | undefined;
+
+    // Tool-call arguments may arrive incrementally (function_call_arguments /
+    // mcp_call_arguments delta events) or whole (inside output_item.done), so
+    // accumulate them per item and finalize on whichever comes last.
+    const toolCalls = new Map<
+      string,
+      {
+        id: string;
+        toolName: string;
+        arguments: string;
+        finished: boolean;
+        providerExecuted: boolean;
+      }
+    >();
+
+    function finalizeToolCall(
+      tc: {
+        id: string;
+        toolName: string;
+        arguments: string;
+        finished: boolean;
+        providerExecuted: boolean;
+      },
+      input: string,
+      controller: { enqueue: (part: LanguageModelV3StreamPart) => void },
+    ) {
+      if (tc.finished) return;
+      tc.finished = true;
+      controller.enqueue({ type: "tool-input-end", id: tc.id });
+      controller.enqueue({
+        type: "tool-call",
+        toolCallId: tc.id,
+        toolName: tc.toolName,
+        input,
+        providerExecuted: tc.providerExecuted,
+      });
+      if (!tc.providerExecuted) {
+        hasToolCall = true;
+      }
+    }
+
+    function emitSourceParts(
+      item: Record<string, unknown>,
+      controller: { enqueue: (part: LanguageModelV3StreamPart) => void },
+    ) {
+      // Provider-executed built-in tools: surface their sources/results.
+      if (item.type === "web_search_call") {
+        const action = item.action as Record<string, unknown> | undefined;
+        const sources = action?.sources as Array<Record<string, string>> | undefined;
+        if (sources) {
+          for (const source of sources) {
+            if (source.url) {
+              controller.enqueue({
+                type: "source",
+                sourceType: "url",
+                id: (item.id as string) ?? "",
+                url: source.url,
+                title: source.title,
+              });
+            }
+          }
+        }
+      }
+    }
 
     return {
       stream: response.pipeThrough(
@@ -648,49 +720,149 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV3 {
             const eventType = val.type as string;
 
             switch (eventType) {
-              case "response.output_text.delta":
-                controller.enqueue({
-                  type: "text-delta",
-                  id: String((val.output_index as number) ?? 0),
-                  delta: (val.delta as string) ?? "",
-                });
-                break;
-
-              case "response.reasoning_summary_text.delta":
-                controller.enqueue({
-                  type: "reasoning-delta",
-                  id: String((val.output_index as number) ?? 0),
-                  delta: (val.delta as string) ?? "",
-                });
-                break;
-
               case "response.output_item.added": {
-                const item = val.item as Record<string, unknown> | undefined;
-                if (item?.type === "function_call") {
-                  controller.enqueue({
-                    type: "tool-input-start",
-                    id: (item.id as string) ?? "",
-                    toolName: (item.name as string) ?? "",
-                  });
+                const item = (val.item as Record<string, unknown> | undefined) ?? {};
+                const id = (item.id as string) ?? "";
+                switch (item.type as string) {
+                  case "reasoning":
+                    // Open the reasoning part before any reasoning delta arrives.
+                    activeReasoningId = id;
+                    controller.enqueue({ type: "reasoning-start", id });
+                    break;
+                  case "function_call":
+                    toolCalls.set(id, {
+                      id,
+                      toolName: (item.name as string) ?? "",
+                      arguments: "",
+                      finished: false,
+                      providerExecuted: false,
+                    });
+                    controller.enqueue({
+                      type: "tool-input-start",
+                      id,
+                      toolName: (item.name as string) ?? "",
+                    });
+                    break;
+                  case "mcp_call": {
+                    const toolName =
+                      (item.name as string) ?? (item.server_label as string) ?? "mcp";
+                    toolCalls.set(id, {
+                      id,
+                      toolName,
+                      arguments: "",
+                      finished: false,
+                      providerExecuted: true,
+                    });
+                    controller.enqueue({ type: "tool-input-start", id, toolName });
+                    break;
+                  }
                 }
                 break;
               }
 
-              case "response.mcp_call_arguments.delta":
+              case "response.output_text.delta": {
+                const id = (val.item_id as string) ?? String(val.output_index ?? 0);
+                if (activeTextId == null) {
+                  activeTextId = id;
+                  controller.enqueue({ type: "text-start", id });
+                }
                 controller.enqueue({
-                  type: "tool-input-delta",
-                  id: (val.item_id as string) ?? "",
+                  type: "text-delta",
+                  id,
                   delta: (val.delta as string) ?? "",
                 });
                 break;
+              }
+
+              case "response.reasoning_summary_text.delta": {
+                // Normally reasoning-start was emitted via response.output_item.added;
+                // guard against streams that open with a delta directly.
+                if (activeReasoningId == null) {
+                  activeReasoningId = (val.item_id as string) ?? String(val.output_index ?? 0);
+                  controller.enqueue({ type: "reasoning-start", id: activeReasoningId });
+                }
+                controller.enqueue({
+                  type: "reasoning-delta",
+                  id: activeReasoningId,
+                  delta: (val.delta as string) ?? "",
+                });
+                break;
+              }
+
+              case "response.function_call_arguments.delta":
+              case "response.mcp_call_arguments.delta": {
+                const id = (val.item_id as string) ?? "";
+                const tc = toolCalls.get(id);
+                const delta = (val.delta as string) ?? "";
+                if (tc && !tc.finished) {
+                  tc.arguments += delta;
+                  controller.enqueue({ type: "tool-input-delta", id, delta });
+                }
+                break;
+              }
+
+              case "response.function_call_arguments.done":
+              case "response.mcp_call_arguments.done": {
+                const id = (val.item_id as string) ?? "";
+                const tc = toolCalls.get(id);
+                if (tc) {
+                  finalizeToolCall(tc, (val.arguments as string) ?? tc.arguments, controller);
+                }
+                break;
+              }
+
+              case "response.output_item.done": {
+                const item = (val.item as Record<string, unknown> | undefined) ?? {};
+                const id = (item.id as string) ?? "";
+                switch (item.type as string) {
+                  case "message":
+                    if (activeTextId != null) {
+                      controller.enqueue({ type: "text-end", id: activeTextId });
+                      activeTextId = undefined;
+                    }
+                    break;
+                  case "reasoning":
+                    if (activeReasoningId != null) {
+                      controller.enqueue({ type: "reasoning-end", id: activeReasoningId });
+                      activeReasoningId = undefined;
+                    }
+                    break;
+                  case "function_call": {
+                    const tc = toolCalls.get(id);
+                    if (tc) {
+                      finalizeToolCall(tc, (item.arguments as string) ?? tc.arguments, controller);
+                    }
+                    break;
+                  }
+                  case "mcp_call": {
+                    const tc = toolCalls.get(id);
+                    if (tc) {
+                      finalizeToolCall(tc, (item.arguments as string) ?? tc.arguments, controller);
+                    }
+                    if (item.output != null) {
+                      controller.enqueue({
+                        type: "tool-result",
+                        toolCallId: id,
+                        toolName: tc?.toolName ?? "mcp",
+                        result: item.output as string,
+                      });
+                    }
+                    break;
+                  }
+                  default:
+                    emitSourceParts(item, controller);
+                    break;
+                }
+                break;
+              }
 
               case "response.completed": {
-                const resp = val.response as Record<string, unknown> | undefined;
-                finishReason = mapFinishReason(resp?.status as string | undefined);
-                if (resp?.usage) {
+                const resp = (val.response as Record<string, unknown> | undefined) ?? {};
+                finishReason = mapFinishReason(resp.status as string | undefined);
+                if (resp.usage) {
                   usage = convertResponsesUsage(resp.usage as ResponsesUsage);
                 }
-                if (resp?.id) {
+                if (resp.id) {
                   controller.enqueue({
                     type: "response-metadata",
                     id: resp.id as string,
@@ -706,25 +878,43 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV3 {
           },
 
           flush(controller) {
-            if (finishReason || usage) {
-              controller.enqueue({
-                type: "finish",
-                usage: usage ?? {
-                  inputTokens: {
-                    total: 0,
-                    noCache: undefined,
-                    cacheRead: undefined,
-                    cacheWrite: undefined,
-                  },
-                  outputTokens: {
-                    total: 0,
-                    text: undefined,
-                    reasoning: undefined,
-                  },
-                },
-                finishReason: finishReason ?? { unified: "stop", raw: undefined },
-              });
+            // Close any parts that never received their done event.
+            if (activeReasoningId != null) {
+              controller.enqueue({ type: "reasoning-end", id: activeReasoningId });
             }
+            if (activeTextId != null) {
+              controller.enqueue({ type: "text-end", id: activeTextId });
+            }
+
+            // A completed status with an emitted tool call should be reported as
+            // tool-calls, mirroring doGenerate.
+            let resolved =
+              finishReason ??
+              ({
+                unified: "stop",
+                raw: undefined,
+              } as LanguageModelV3FinishReason);
+            if (hasToolCall && resolved.unified === "stop") {
+              resolved = { unified: "tool-calls", raw: resolved.raw };
+            }
+
+            controller.enqueue({
+              type: "finish",
+              usage: usage ?? {
+                inputTokens: {
+                  total: 0,
+                  noCache: undefined,
+                  cacheRead: undefined,
+                  cacheWrite: undefined,
+                },
+                outputTokens: {
+                  total: 0,
+                  text: undefined,
+                  reasoning: undefined,
+                },
+              },
+              finishReason: resolved,
+            });
           },
         }),
       ),
