@@ -28,7 +28,7 @@ import {
 import { z } from "zod/v4";
 
 import type { DashScopeChatOptions } from "./types";
-import { failedResponseHandler, type DashScopeConfig } from "./utils";
+import { buildJsonInstruction, failedResponseHandler, type DashScopeConfig } from "./utils";
 
 // --- Schemas ---
 
@@ -286,22 +286,15 @@ export class DashScopeChatLanguageModel implements LanguageModelV3 {
 
     const messages = convertMessages(options.prompt);
 
-    // DashScope requires the word "json" in messages when using json_object format.
-    // Check if any message already contains "json", if not, inject a system message.
     if (options.responseFormat?.type === "json") {
-      const hasJson = messages.some((m) => {
-        const c = m.content;
-        if (typeof c === "string") return c.toLowerCase().includes("json");
-        if (Array.isArray(c))
-          return c.some(
-            (p: Record<string, unknown>) =>
-              typeof p.text === "string" && p.text.toLowerCase().includes("json"),
-          );
-        return false;
+      // DashScope Chat guarantees JSON shape via response_format json_object
+      // (which requires the word "json" in the prompt). Inject the schema so
+      // the model also knows the target structure; the instruction satisfies
+      // the keyword requirement. Mirrors the Responses path (see utils).
+      messages.unshift({
+        role: "system",
+        content: buildJsonInstruction(options.responseFormat),
       });
-      if (!hasJson) {
-        messages.unshift({ role: "system", content: "Respond with JSON." });
-      }
     }
 
     const args: Record<string, unknown> = {

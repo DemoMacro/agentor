@@ -78,6 +78,36 @@ export function convertResponsesUsage(usage: ResponsesUsage | undefined): Langua
   };
 }
 
+// --- Structured output (JSON) instruction ---
+
+/**
+ * Build a system instruction asking the model to reply with a JSON object
+ * conforming to the given schema. Shared by the Chat and Responses paths:
+ * neither DashScope endpoint can take the schema natively to enforce the
+ * structure (Chat only guarantees JSON shape via response_format json_object;
+ * Responses ignores text.format / response_format entirely).
+ */
+export function buildJsonInstruction(format: {
+  schema?: unknown;
+  name?: string;
+  description?: string;
+}): string {
+  const lines = ["Respond with a single valid JSON object as the entire output."];
+  if (format.description) lines.push(format.description);
+  if (format.schema) {
+    lines.push(
+      `The JSON must conform to this JSON Schema${format.name ? ` for "${format.name}"` : ""}:`,
+      "```json",
+      JSON.stringify(format.schema),
+      "```",
+    );
+  }
+  lines.push(
+    "Do not include any markdown fences, explanations, or surrounding text — output only the raw JSON.",
+  );
+  return lines.join("\n");
+}
+
 // --- Base64 utility ---
 
 export function uint8ArrayToBase64(data: Uint8Array): string {

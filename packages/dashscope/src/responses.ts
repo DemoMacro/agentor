@@ -25,6 +25,7 @@ import { z } from "zod/v4";
 
 import type { DashScopeResponsesOptions } from "./types";
 import {
+  buildJsonInstruction,
   convertResponsesUsage,
   failedResponseHandler,
   type DashScopeConfig,
@@ -527,6 +528,15 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV3 {
     const tools = prepareTools(options.tools);
     const input = convertInput(options.prompt);
 
+    // Output.object reaches us via responseFormat; the Responses endpoint has
+    // no native structured output, so inject the schema into instructions (see
+    // buildJsonInstruction).
+    let instructions = dsOptions?.instructions;
+    if (options.responseFormat?.type === "json") {
+      const jsonInstruction = buildJsonInstruction(options.responseFormat);
+      instructions = instructions ? `${instructions}\n\n${jsonInstruction}` : jsonInstruction;
+    }
+
     const body: Record<string, unknown> = {
       model: this.modelId,
       input,
@@ -548,7 +558,7 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV3 {
         previous_response_id: dsOptions.previousResponseId,
       }),
       ...(dsOptions?.conversation && { conversation: dsOptions.conversation }),
-      ...(dsOptions?.instructions && { instructions: dsOptions.instructions }),
+      ...(instructions && { instructions }),
     };
 
     return { args: body, warnings };
