@@ -1,6 +1,6 @@
 {
   "name": "@agentor/chat-qq",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "QQ Bot 官方 API 适配器，支持 WebSocket 长连接和 Webhook 回调两种模式",
   "keywords": [
     "QQ机器人",
@@ -51,7 +51,10 @@
     "prepack": "pnpm build"
   },
   "dependencies": {
-    "@chat-adapter/shared": "4.29.0"
+    "@chat-adapter/shared": "4.35.0"
+  },
+  "devDependencies": {
+    "chat": "4.35.0"
   },
   "peerDependencies": {
     "chat": "^4.0.0"

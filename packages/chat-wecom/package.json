@@ -1,6 +1,6 @@
 {
   "name": "@agentor/chat-wecom",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "企业微信 (WeCom) Chat SDK 适配器，支持 Webhook 群机器人、智能机器人（回调 URL / WebSocket 长连接）和自建应用",
   "keywords": [
     "agentor",
@@ -53,7 +53,10 @@
     "prepack": "pnpm build"
   },
   "dependencies": {
-    "@chat-adapter/shared": "4.29.0"
+    "@chat-adapter/shared": "4.35.0"
+  },
+  "devDependencies": {
+    "chat": "4.35.0"
   },
   "peerDependencies": {
     "chat": "^4.0.0"
