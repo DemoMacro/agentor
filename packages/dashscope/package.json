@@ -43,9 +43,9 @@
     "prepack": "pnpm build"
   },
   "dependencies": {
-    "@ai-sdk/openai-compatible": "2.0.47",
-    "@ai-sdk/provider": "3.0.10",
-    "@ai-sdk/provider-utils": "4.0.27",
+    "@ai-sdk/openai-compatible": "3.0.15",
+    "@ai-sdk/provider": "4.0.4",
+    "@ai-sdk/provider-utils": "5.0.13",
     "zod": "4.4.3"
   }
 }

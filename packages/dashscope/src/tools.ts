@@ -1,8 +1,4 @@
-import {
-  createProviderToolFactoryWithOutputSchema,
-  lazySchema,
-  zodSchema,
-} from "@ai-sdk/provider-utils";
+import { createProviderExecutedToolFactory, lazySchema, zodSchema } from "@ai-sdk/provider-utils";
 import { z } from "zod/v4";
 
 // --- Web Search ---
@@ -25,7 +21,7 @@ const webSearchOutputSchema = lazySchema(() =>
   ),
 );
 
-const webSearchToolFactory = createProviderToolFactoryWithOutputSchema<
+const webSearchToolFactory = createProviderExecutedToolFactory<
   // INPUT: model-level input (provider-executed, so empty)
   Record<string, never>,
   // OUTPUT: tool output shape
@@ -70,7 +66,7 @@ const codeInterpreterOutputSchema = lazySchema(() =>
   ),
 );
 
-const codeInterpreterToolFactory = createProviderToolFactoryWithOutputSchema<
+const codeInterpreterToolFactory = createProviderExecutedToolFactory<
   Record<string, never>,
   {
     code?: string;
@@ -97,7 +93,7 @@ const webExtractorOutputSchema = lazySchema(() =>
   ),
 );
 
-const webExtractorToolFactory = createProviderToolFactoryWithOutputSchema<
+const webExtractorToolFactory = createProviderExecutedToolFactory<
   Record<string, never>,
   {
     urls?: string[];
@@ -133,7 +129,7 @@ const fileSearchOutputSchema = lazySchema(() =>
   ),
 );
 
-const fileSearchToolFactory = createProviderToolFactoryWithOutputSchema<
+const fileSearchToolFactory = createProviderExecutedToolFactory<
   Record<string, never>,
   {
     queries?: string[];
@@ -166,7 +162,7 @@ const webSearchImageOutputSchema = lazySchema(() =>
   ),
 );
 
-const webSearchImageToolFactory = createProviderToolFactoryWithOutputSchema<
+const webSearchImageToolFactory = createProviderExecutedToolFactory<
   Record<string, never>,
   {
     queries?: string[];
@@ -184,7 +180,7 @@ const imageSearchInputSchema = lazySchema(() => zodSchema(z.object({})));
 
 const imageSearchOutputSchema = lazySchema(() => zodSchema(z.object({})));
 
-const imageSearchToolFactory = createProviderToolFactoryWithOutputSchema<
+const imageSearchToolFactory = createProviderExecutedToolFactory<
   Record<string, never>,
   Record<string, never>,
   Record<string, never>
@@ -200,7 +196,7 @@ const mcpInputSchema = lazySchema(() => zodSchema(z.object({})));
 
 const mcpOutputSchema = lazySchema(() => zodSchema(z.object({})));
 
-const mcpToolFactory = createProviderToolFactoryWithOutputSchema<
+const mcpToolFactory = createProviderExecutedToolFactory<
   Record<string, never>,
   Record<string, never>,
   {
