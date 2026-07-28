@@ -1,17 +1,17 @@
 import type {
-  LanguageModelV3,
-  LanguageModelV3CallOptions,
-  LanguageModelV3Content,
-  LanguageModelV3FilePart,
-  LanguageModelV3FinishReason,
-  LanguageModelV3GenerateResult,
-  LanguageModelV3Message,
-  LanguageModelV3StreamPart,
-  LanguageModelV3StreamResult,
-  LanguageModelV3ToolCallPart,
-  LanguageModelV3ToolChoice,
-  LanguageModelV3ToolResultPart,
-  LanguageModelV3Usage,
+  LanguageModelV4,
+  LanguageModelV4CallOptions,
+  LanguageModelV4Content,
+  LanguageModelV4FilePart,
+  LanguageModelV4FinishReason,
+  LanguageModelV4GenerateResult,
+  LanguageModelV4Message,
+  LanguageModelV4StreamPart,
+  LanguageModelV4StreamResult,
+  LanguageModelV4ToolCallPart,
+  LanguageModelV4ToolChoice,
+  LanguageModelV4ToolResultPart,
+  LanguageModelV4Usage,
 } from "@ai-sdk/provider";
 import {
   combineHeaders,
@@ -28,6 +28,7 @@ import {
   buildJsonInstruction,
   convertResponsesUsage,
   failedResponseHandler,
+  fileDataToImageUrl,
   type DashScopeConfig,
   type ResponsesUsage,
 } from "./utils";
@@ -76,7 +77,7 @@ const streamChunkSchema = zodSchema(z.object({ type: z.string() }).loose());
 
 // --- Helpers ---
 
-function mapFinishReason(status?: string): LanguageModelV3FinishReason {
+function mapFinishReason(status?: string): LanguageModelV4FinishReason {
   switch (status) {
     case "completed":
       return { unified: "stop", raw: status };
@@ -90,7 +91,7 @@ function mapFinishReason(status?: string): LanguageModelV3FinishReason {
   }
 }
 
-function mapToolChoice(toolChoice: LanguageModelV3ToolChoice): string | Record<string, unknown> {
+function mapToolChoice(toolChoice: LanguageModelV4ToolChoice): string | Record<string, unknown> {
   switch (toolChoice.type) {
     case "auto":
       return "auto";
@@ -107,8 +108,8 @@ function mapToolChoice(toolChoice: LanguageModelV3ToolChoice): string | Record<s
   }
 }
 
-function convertOutput(output: Array<Record<string, unknown>>): Array<LanguageModelV3Content> {
-  const content: Array<LanguageModelV3Content> = [];
+function convertOutput(output: Array<Record<string, unknown>>): Array<LanguageModelV4Content> {
+  const content: Array<LanguageModelV4Content> = [];
 
   for (const item of output) {
     const type = item.type as string;
@@ -306,7 +307,7 @@ function convertOutput(output: Array<Record<string, unknown>>): Array<LanguageMo
 
 // --- Tool processing ---
 
-function prepareTools(tools: LanguageModelV3CallOptions["tools"]): Array<Record<string, unknown>> {
+function prepareTools(tools: LanguageModelV4CallOptions["tools"]): Array<Record<string, unknown>> {
   if (!tools?.length) return [];
 
   const apiTools: Array<Record<string, unknown>> = [];
@@ -373,21 +374,12 @@ function prepareTools(tools: LanguageModelV3CallOptions["tools"]): Array<Record<
 
 // --- Input conversion ---
 
-function convertFilePart(part: LanguageModelV3FilePart): Record<string, unknown> | undefined {
-  const data = part.data;
-  if (data instanceof URL) {
-    return { type: "input_image", image_url: data.toString() };
-  }
-  if (typeof data === "string") {
-    if (data.startsWith("data:")) {
-      return { type: "input_image", image_url: data };
-    }
-    return { type: "input_image", image_url: `data:${part.mediaType};base64,${data}` };
-  }
-  return undefined;
+function convertFilePart(part: LanguageModelV4FilePart): Record<string, unknown> | undefined {
+  const url = fileDataToImageUrl(part.data, part.mediaType);
+  return url ? { type: "input_image", image_url: url } : undefined;
 }
 
-function convertToolResultOutput(output: LanguageModelV3ToolResultPart["output"]): string {
+function convertToolResultOutput(output: LanguageModelV4ToolResultPart["output"]): string {
   if (typeof output === "string") return output;
   if (output && typeof output === "object" && "type" in output && output.type === "text") {
     return (output as { type: "text"; value: string }).value;
@@ -405,7 +397,7 @@ function extractCacheControl(
   return undefined;
 }
 
-function convertInput(prompt: Array<LanguageModelV3Message>): Array<Record<string, unknown>> {
+function convertInput(prompt: Array<LanguageModelV4Message>): Array<Record<string, unknown>> {
   const input: Array<Record<string, unknown>> = [];
 
   for (const message of prompt) {
@@ -440,7 +432,7 @@ function convertInput(prompt: Array<LanguageModelV3Message>): Array<Record<strin
         }
 
         case "file": {
-          const filePart = convertFilePart(part as LanguageModelV3FilePart);
+          const filePart = convertFilePart(part as LanguageModelV4FilePart);
           if (filePart) fileParts.push(filePart);
           break;
         }
@@ -450,7 +442,7 @@ function convertInput(prompt: Array<LanguageModelV3Message>): Array<Record<strin
           break;
 
         case "tool-call": {
-          const callPart = part as LanguageModelV3ToolCallPart;
+          const callPart = part as LanguageModelV4ToolCallPart;
           functionCalls.push({
             type: "function_call",
             name: callPart.toolName,
@@ -462,7 +454,7 @@ function convertInput(prompt: Array<LanguageModelV3Message>): Array<Record<strin
         }
 
         case "tool-result": {
-          const resultPart = part as LanguageModelV3ToolResultPart;
+          const resultPart = part as LanguageModelV4ToolResultPart;
           functionOutputs.push({
             type: "function_call_output",
             call_id: resultPart.toolCallId,
@@ -494,8 +486,8 @@ function convertInput(prompt: Array<LanguageModelV3Message>): Array<Record<strin
 
 // --- Model ---
 
-export class DashScopeResponsesLanguageModel implements LanguageModelV3 {
-  readonly specificationVersion = "v3" as const;
+export class DashScopeResponsesLanguageModel implements LanguageModelV4 {
+  readonly specificationVersion = "v4" as const;
   readonly modelId: string;
   private readonly config: DashScopeConfig;
 
@@ -512,7 +504,7 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV3 {
     return {};
   }
 
-  private async getArgs(options: LanguageModelV3CallOptions) {
+  private async getArgs(options: LanguageModelV4CallOptions) {
     const warnings: Array<{ type: "unsupported"; feature: string }> = [];
 
     if (options.topK != null) {
@@ -564,7 +556,7 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV3 {
     return { args: body, warnings };
   }
 
-  async doGenerate(options: LanguageModelV3CallOptions): Promise<LanguageModelV3GenerateResult> {
+  async doGenerate(options: LanguageModelV4CallOptions): Promise<LanguageModelV4GenerateResult> {
     const { args: body, warnings } = await this.getArgs(options);
 
     const { responseHeaders, value: response } = await postJsonToApi({
@@ -617,7 +609,7 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV3 {
     };
   }
 
-  async doStream(options: LanguageModelV3CallOptions): Promise<LanguageModelV3StreamResult> {
+  async doStream(options: LanguageModelV4CallOptions): Promise<LanguageModelV4StreamResult> {
     const { args: body, warnings } = await this.getArgs(options);
 
     const { responseHeaders, value: response } = await postJsonToApi({
@@ -630,8 +622,8 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV3 {
       fetch: this.config.fetch,
     });
 
-    let finishReason: LanguageModelV3FinishReason | undefined;
-    let usage: LanguageModelV3Usage | undefined;
+    let finishReason: LanguageModelV4FinishReason | undefined;
+    let usage: LanguageModelV4Usage | undefined;
     let hasToolCall = false;
 
     // DashScope streams each output item as added → (deltas) → done. ai-sdk
@@ -664,7 +656,7 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV3 {
         providerExecuted: boolean;
       },
       input: string,
-      controller: { enqueue: (part: LanguageModelV3StreamPart) => void },
+      controller: { enqueue: (part: LanguageModelV4StreamPart) => void },
     ) {
       if (tc.finished) return;
       tc.finished = true;
@@ -683,7 +675,7 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV3 {
 
     function emitSourceParts(
       item: Record<string, unknown>,
-      controller: { enqueue: (part: LanguageModelV3StreamPart) => void },
+      controller: { enqueue: (part: LanguageModelV4StreamPart) => void },
     ) {
       // Provider-executed built-in tools: surface their sources/results.
       if (item.type === "web_search_call") {
@@ -713,7 +705,7 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV3 {
             value?: Record<string, unknown>;
             error?: unknown;
           },
-          LanguageModelV3StreamPart
+          LanguageModelV4StreamPart
         >({
           start(controller) {
             controller.enqueue({ type: "stream-start", warnings });
@@ -771,7 +763,7 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV3 {
               }
 
               case "response.output_text.delta": {
-                const id = (val.item_id as string) ?? String(val.output_index ?? 0);
+                const id = (val.item_id as string) ?? String((val.output_index as number) ?? 0);
                 if (activeTextId == null) {
                   activeTextId = id;
                   controller.enqueue({ type: "text-start", id });
@@ -788,7 +780,8 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV3 {
                 // Normally reasoning-start was emitted via response.output_item.added;
                 // guard against streams that open with a delta directly.
                 if (activeReasoningId == null) {
-                  activeReasoningId = (val.item_id as string) ?? String(val.output_index ?? 0);
+                  activeReasoningId =
+                    (val.item_id as string) ?? String((val.output_index as number) ?? 0);
                   controller.enqueue({ type: "reasoning-start", id: activeReasoningId });
                 }
                 controller.enqueue({
@@ -903,7 +896,7 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV3 {
               ({
                 unified: "stop",
                 raw: undefined,
-              } as LanguageModelV3FinishReason);
+              } as LanguageModelV4FinishReason);
             if (hasToolCall && resolved.unified === "stop") {
               resolved = { unified: "tool-calls", raw: resolved.raw };
             }

@@ -1,5 +1,10 @@
-import type { JSONObject, LanguageModelV3Usage } from "@ai-sdk/provider";
-import { createJsonErrorResponseHandler, FetchFunction, zodSchema } from "@ai-sdk/provider-utils";
+import type { JSONObject, LanguageModelV4Usage, SharedV4FileData } from "@ai-sdk/provider";
+import {
+  convertToBase64,
+  createJsonErrorResponseHandler,
+  FetchFunction,
+  zodSchema,
+} from "@ai-sdk/provider-utils";
 import { z } from "zod/v4";
 
 // --- Config ---
@@ -54,7 +59,7 @@ export interface ResponsesUsage {
   output_tokens_details?: { reasoning_tokens: number };
 }
 
-export function convertResponsesUsage(usage: ResponsesUsage | undefined): LanguageModelV3Usage {
+export function convertResponsesUsage(usage: ResponsesUsage | undefined): LanguageModelV4Usage {
   if (!usage) {
     return {
       inputTokens: { total: 0, noCache: undefined, cacheRead: undefined, cacheWrite: undefined },
@@ -106,6 +111,28 @@ export function buildJsonInstruction(format: {
     "Do not include any markdown fences, explanations, or surrounding text — output only the raw JSON.",
   );
   return lines.join("\n");
+}
+
+// --- File part conversion ---
+
+/**
+ * Resolve a V4 file part's SharedV4Data into a URL the DashScope
+ * OpenAI-compatible endpoints accept as `image_url`. SharedV4FileData is a
+ * tagged union; only the `data` (raw bytes or base64) and `url` variants can
+ * become a URL — `reference` and `text` have no URL form.
+ */
+export function fileDataToImageUrl(data: SharedV4FileData, mediaType: string): string | undefined {
+  switch (data.type) {
+    case "url":
+      return data.url.toString();
+    case "data":
+      if (typeof data.data === "string") {
+        return data.data.startsWith("data:") ? data.data : `data:${mediaType};base64,${data.data}`;
+      }
+      return `data:${mediaType};base64,${convertToBase64(data.data)}`;
+    default:
+      return undefined;
+  }
 }
 
 // --- Base64 utility ---

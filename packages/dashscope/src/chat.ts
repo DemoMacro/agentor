@@ -5,18 +5,17 @@ import {
   prepareTools,
 } from "@ai-sdk/openai-compatible/internal";
 import type {
-  LanguageModelV3,
-  LanguageModelV3CallOptions,
-  LanguageModelV3Content,
-  LanguageModelV3FinishReason,
-  LanguageModelV3GenerateResult,
-  LanguageModelV3StreamPart,
-  LanguageModelV3StreamResult,
-  SharedV3Warning,
+  LanguageModelV4,
+  LanguageModelV4CallOptions,
+  LanguageModelV4Content,
+  LanguageModelV4FinishReason,
+  LanguageModelV4GenerateResult,
+  LanguageModelV4StreamPart,
+  LanguageModelV4StreamResult,
+  SharedV4Warning,
 } from "@ai-sdk/provider";
 import {
   combineHeaders,
-  convertToBase64,
   createEventSourceResponseHandler,
   createJsonResponseHandler,
   generateId,
@@ -28,7 +27,12 @@ import {
 import { z } from "zod/v4";
 
 import type { DashScopeChatOptions } from "./types";
-import { buildJsonInstruction, failedResponseHandler, type DashScopeConfig } from "./utils";
+import {
+  buildJsonInstruction,
+  failedResponseHandler,
+  fileDataToImageUrl,
+  type DashScopeConfig,
+} from "./utils";
 
 // --- Schemas ---
 
@@ -134,7 +138,7 @@ function extractCacheControl(
 }
 
 function convertMessages(
-  prompt: LanguageModelV3CallOptions["prompt"],
+  prompt: LanguageModelV4CallOptions["prompt"],
 ): Array<Record<string, unknown>> {
   const messages: Array<Record<string, unknown>> = [];
 
@@ -165,12 +169,12 @@ function convertMessages(
               break;
             }
             case "file": {
-              if (part.mediaType.startsWith("image/")) {
-                const url =
-                  part.data instanceof URL
-                    ? part.data.toString()
-                    : `data:${part.mediaType === "image/*" ? "image/jpeg" : part.mediaType};base64,${convertToBase64(part.data as Uint8Array)}`;
-                parts.push({ type: "image_url", image_url: { url } });
+              // V4 normalizes `image/*` to the top-level `image`, so match the prefix.
+              if (part.mediaType.startsWith("image")) {
+                const url = fileDataToImageUrl(part.data, part.mediaType);
+                if (url) {
+                  parts.push({ type: "image_url", image_url: { url } });
+                }
               }
               break;
             }
@@ -242,8 +246,8 @@ function convertMessages(
 
 // --- Model ---
 
-export class DashScopeChatLanguageModel implements LanguageModelV3 {
-  readonly specificationVersion = "v3" as const;
+export class DashScopeChatLanguageModel implements LanguageModelV4 {
+  readonly specificationVersion = "v4" as const;
   readonly modelId: string;
   private readonly config: DashScopeConfig;
 
@@ -260,8 +264,8 @@ export class DashScopeChatLanguageModel implements LanguageModelV3 {
     return { "image/*": [/^https?:\/\/.*$/] };
   }
 
-  private async getArgs(options: LanguageModelV3CallOptions) {
-    const warnings: SharedV3Warning[] = [];
+  private async getArgs(options: LanguageModelV4CallOptions) {
+    const warnings: SharedV4Warning[] = [];
 
     if (options.frequencyPenalty != null) {
       warnings.push({ type: "unsupported", feature: "frequencyPenalty" });
@@ -329,7 +333,7 @@ export class DashScopeChatLanguageModel implements LanguageModelV3 {
     return { args, warnings };
   }
 
-  async doGenerate(options: LanguageModelV3CallOptions): Promise<LanguageModelV3GenerateResult> {
+  async doGenerate(options: LanguageModelV4CallOptions): Promise<LanguageModelV4GenerateResult> {
     const { args, warnings } = await this.getArgs(options);
 
     const { responseHeaders, value: response } = await postJsonToApi({
@@ -343,7 +347,7 @@ export class DashScopeChatLanguageModel implements LanguageModelV3 {
     });
 
     const choice = response.choices[0];
-    const content: Array<LanguageModelV3Content> = [];
+    const content: Array<LanguageModelV4Content> = [];
 
     if (choice.message.content != null && choice.message.content.length > 0) {
       content.push({ type: "text", text: choice.message.content });
@@ -364,7 +368,7 @@ export class DashScopeChatLanguageModel implements LanguageModelV3 {
       }
     }
 
-    const finishReason: LanguageModelV3FinishReason = {
+    const finishReason: LanguageModelV4FinishReason = {
       unified: mapOpenAICompatibleFinishReason(choice.finish_reason),
       raw: choice.finish_reason ?? undefined,
     };
@@ -382,7 +386,7 @@ export class DashScopeChatLanguageModel implements LanguageModelV3 {
     };
   }
 
-  async doStream(options: LanguageModelV3CallOptions): Promise<LanguageModelV3StreamResult> {
+  async doStream(options: LanguageModelV4CallOptions): Promise<LanguageModelV4StreamResult> {
     const { args, warnings } = await this.getArgs(options);
     const body = { ...args, stream: true };
 
@@ -396,7 +400,7 @@ export class DashScopeChatLanguageModel implements LanguageModelV3 {
       fetch: this.config.fetch,
     });
 
-    let finishReason: LanguageModelV3FinishReason = { unified: "other", raw: undefined };
+    let finishReason: LanguageModelV4FinishReason = { unified: "other", raw: undefined };
     let usage: z.infer<typeof usageSchema> | undefined;
 
     let isFirstChunk = true;
@@ -413,7 +417,7 @@ export class DashScopeChatLanguageModel implements LanguageModelV3 {
       stream: response.pipeThrough(
         new TransformStream<
           ParseResult<z.infer<typeof chatChunkSchema>>,
-          LanguageModelV3StreamPart
+          LanguageModelV4StreamPart
         >({
           start(controller) {
             controller.enqueue({ type: "stream-start", warnings });

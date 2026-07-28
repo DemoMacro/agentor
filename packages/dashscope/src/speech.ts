@@ -1,4 +1,4 @@
-import type { SharedV3Warning, SpeechModelV3, SpeechModelV3CallOptions } from "@ai-sdk/provider";
+import type { SharedV4Warning, SpeechModelV4, SpeechModelV4CallOptions } from "@ai-sdk/provider";
 import {
   combineHeaders,
   createJsonResponseHandler,
@@ -58,8 +58,8 @@ const cosyvoiceResponseSchema = zodSchema(
 
 // --- Model ---
 
-export class DashScopeSpeechModel implements SpeechModelV3 {
-  readonly specificationVersion = "v3" as const;
+export class DashScopeSpeechModel implements SpeechModelV4 {
+  readonly specificationVersion = "v4" as const;
   readonly modelId: string;
   private readonly config: DashScopeConfig;
 
@@ -72,8 +72,8 @@ export class DashScopeSpeechModel implements SpeechModelV3 {
     return this.config.provider;
   }
 
-  async doGenerate(options: SpeechModelV3CallOptions) {
-    const warnings: SharedV3Warning[] = [];
+  async doGenerate(options: SpeechModelV4CallOptions) {
+    const warnings: SharedV4Warning[] = [];
 
     const dsOptions = await parseProviderOptions<DashScopeSpeechOptions>({
       provider: "dashscope",

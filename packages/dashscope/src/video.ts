@@ -1,7 +1,7 @@
 import type {
-  Experimental_VideoModelV3 as VideoModelV3,
-  Experimental_VideoModelV3CallOptions as VideoModelV3CallOptions,
-  SharedV3Warning,
+  Experimental_VideoModelV4 as VideoModelV4,
+  Experimental_VideoModelV4CallOptions as VideoModelV4CallOptions,
+  SharedV4Warning,
 } from "@ai-sdk/provider";
 import { AISDKError } from "@ai-sdk/provider";
 import {
@@ -94,8 +94,8 @@ function detectMode(modelId: string): "t2v" | "i2v" {
   return modelId.includes("-i2v") ? "i2v" : "t2v";
 }
 
-export class DashScopeVideoModel implements VideoModelV3 {
-  readonly specificationVersion = "v3" as const;
+export class DashScopeVideoModel implements VideoModelV4 {
+  readonly specificationVersion = "v4" as const;
   readonly modelId: string;
   private readonly config: DashScopeConfig;
 
@@ -112,8 +112,8 @@ export class DashScopeVideoModel implements VideoModelV3 {
     return 1;
   }
 
-  async doGenerate(options: VideoModelV3CallOptions) {
-    const warnings: SharedV3Warning[] = [];
+  async doGenerate(options: VideoModelV4CallOptions) {
+    const warnings: SharedV4Warning[] = [];
     const mode = detectMode(this.modelId);
 
     const dsOptions = await parseProviderOptions<DashScopeVideoOptions>({

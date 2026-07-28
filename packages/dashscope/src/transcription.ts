@@ -1,7 +1,7 @@
 import type {
-  SharedV3Warning,
-  TranscriptionModelV3,
-  TranscriptionModelV3CallOptions,
+  SharedV4Warning,
+  TranscriptionModelV4,
+  TranscriptionModelV4CallOptions,
 } from "@ai-sdk/provider";
 import { AISDKError } from "@ai-sdk/provider";
 import {
@@ -138,8 +138,8 @@ function buildAudioUrl(audio: Uint8Array | string, mediaType: string): string {
 
 // --- Model ---
 
-export class DashScopeTranscriptionModel implements TranscriptionModelV3 {
-  readonly specificationVersion = "v3" as const;
+export class DashScopeTranscriptionModel implements TranscriptionModelV4 {
+  readonly specificationVersion = "v4" as const;
   readonly modelId: string;
   private readonly config: DashScopeConfig;
 
@@ -152,8 +152,8 @@ export class DashScopeTranscriptionModel implements TranscriptionModelV3 {
     return this.config.provider;
   }
 
-  async doGenerate(options: TranscriptionModelV3CallOptions) {
-    const warnings: SharedV3Warning[] = [];
+  async doGenerate(options: TranscriptionModelV4CallOptions) {
+    const warnings: SharedV4Warning[] = [];
 
     const dsOptions =
       (await parseProviderOptions<DashScopeTranscriptionOptions>({
@@ -172,9 +172,9 @@ export class DashScopeTranscriptionModel implements TranscriptionModelV3 {
   }
 
   private async doSync(
-    options: TranscriptionModelV3CallOptions,
+    options: TranscriptionModelV4CallOptions,
     dsOptions: DashScopeTranscriptionOptions | null,
-    warnings: SharedV3Warning[],
+    warnings: SharedV4Warning[],
   ) {
     const audioUrl = buildAudioUrl(options.audio, options.mediaType);
 
@@ -228,9 +228,9 @@ export class DashScopeTranscriptionModel implements TranscriptionModelV3 {
   }
 
   private async doAsync(
-    options: TranscriptionModelV3CallOptions,
+    options: TranscriptionModelV4CallOptions,
     dsOptions: DashScopeTranscriptionOptions | null,
-    warnings: SharedV3Warning[],
+    warnings: SharedV4Warning[],
   ) {
     const audioUrl = dsOptions?.fileUrl;
     if (!audioUrl) {

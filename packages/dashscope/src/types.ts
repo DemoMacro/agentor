@@ -1,10 +1,10 @@
 import type {
-  Experimental_VideoModelV3 as VideoModelV3,
-  LanguageModelV3,
-  ProviderV3,
-  RerankingModelV3,
-  SpeechModelV3,
-  TranscriptionModelV3,
+  Experimental_VideoModelV4 as VideoModelV4,
+  LanguageModelV4,
+  ProviderV4,
+  RerankingModelV4,
+  SpeechModelV4,
+  TranscriptionModelV4,
 } from "@ai-sdk/provider";
 import type { FetchFunction } from "@ai-sdk/provider-utils";
 
@@ -71,19 +71,19 @@ export interface DashScopeResponsesOptions {
 // --- Responses namespace ---
 
 export interface DashScopeResponsesNamespace {
-  (modelId: string): LanguageModelV3;
+  (modelId: string): LanguageModelV4;
   tools: DashScopeResponsesTools;
 }
 
 // --- Provider interface ---
 
-export interface DashScopeProvider extends ProviderV3 {
-  rerankingModel(modelId: string): RerankingModelV3;
-  speechModel(modelId: string): SpeechModelV3;
-  transcriptionModel(modelId: string): TranscriptionModelV3;
-  (modelId: string): LanguageModelV3;
-  completionModel(modelId: string): LanguageModelV3;
-  videoModel(modelId: string): VideoModelV3;
+export interface DashScopeProvider extends ProviderV4 {
+  rerankingModel(modelId: string): RerankingModelV4;
+  speechModel(modelId: string): SpeechModelV4;
+  transcriptionModel(modelId: string): TranscriptionModelV4;
+  (modelId: string): LanguageModelV4;
+  completionModel(modelId: string): LanguageModelV4;
+  videoModel(modelId: string): VideoModelV4;
   chatOptions: (options: DashScopeChatOptions) => {
     providerOptions: { dashscope: DashScopeChatOptions };
   };

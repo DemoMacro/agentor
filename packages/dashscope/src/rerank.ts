@@ -1,7 +1,7 @@
 import type {
-  RerankingModelV3,
-  RerankingModelV3CallOptions,
-  SharedV3Warning,
+  RerankingModelV4,
+  RerankingModelV4CallOptions,
+  SharedV4Warning,
 } from "@ai-sdk/provider";
 import {
   combineHeaders,
@@ -40,8 +40,8 @@ const rerankResponseSchema = zodSchema(
 
 // --- Model ---
 
-export class DashScopeRerankingModel implements RerankingModelV3 {
-  readonly specificationVersion = "v3" as const;
+export class DashScopeRerankingModel implements RerankingModelV4 {
+  readonly specificationVersion = "v4" as const;
   readonly modelId: string;
   private readonly config: DashScopeConfig;
 
@@ -54,8 +54,8 @@ export class DashScopeRerankingModel implements RerankingModelV3 {
     return this.config.provider;
   }
 
-  async doRerank(options: RerankingModelV3CallOptions) {
-    const warnings: SharedV3Warning[] = [];
+  async doRerank(options: RerankingModelV4CallOptions) {
+    const warnings: SharedV4Warning[] = [];
 
     const documents =
       options.documents.type === "text"

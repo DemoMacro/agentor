@@ -1,4 +1,4 @@
-import type { ImageModelV3, ImageModelV3CallOptions, SharedV3Warning } from "@ai-sdk/provider";
+import type { ImageModelV4, ImageModelV4CallOptions, SharedV4Warning } from "@ai-sdk/provider";
 import {
   combineHeaders,
   createJsonResponseHandler,
@@ -67,8 +67,8 @@ const imageResponseSchema = zodSchema(
 
 // --- Model ---
 
-export class DashScopeImageModel implements ImageModelV3 {
-  readonly specificationVersion = "v3" as const;
+export class DashScopeImageModel implements ImageModelV4 {
+  readonly specificationVersion = "v4" as const;
   readonly modelId: string;
   private readonly config: DashScopeConfig;
 
@@ -85,8 +85,8 @@ export class DashScopeImageModel implements ImageModelV3 {
     return 1;
   }
 
-  async doGenerate(options: ImageModelV3CallOptions) {
-    const warnings: SharedV3Warning[] = [];
+  async doGenerate(options: ImageModelV4CallOptions) {
+    const warnings: SharedV4Warning[] = [];
 
     const dsOptions = await parseProviderOptions<DashScopeImageOptions>({
       provider: "dashscope",
