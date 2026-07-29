@@ -6,10 +6,13 @@ import type {
   LanguageModelV4FinishReason,
   LanguageModelV4GenerateResult,
   LanguageModelV4Message,
+  LanguageModelV4Source,
   LanguageModelV4StreamPart,
   LanguageModelV4StreamResult,
+  LanguageModelV4ToolCall,
   LanguageModelV4ToolCallPart,
   LanguageModelV4ToolChoice,
+  LanguageModelV4ToolResult,
   LanguageModelV4ToolResultPart,
   LanguageModelV4Usage,
 } from "@ai-sdk/provider";
@@ -108,6 +111,159 @@ function mapToolChoice(toolChoice: LanguageModelV4ToolChoice): string | Record<s
   }
 }
 
+// Parts emitted for a DashScope tool output item. Shared subset of
+// LanguageModelV4Content (doGenerate) and LanguageModelV4StreamPart (doStream).
+type ToolOutputPart = LanguageModelV4ToolCall | LanguageModelV4Source | LanguageModelV4ToolResult;
+
+/**
+ * Convert a DashScope Responses output item (provider-executed built-in tool,
+ * MCP call, or function call) into ai-sdk parts. Shared by doGenerate's
+ * convertOutput and doStream's output_item.done so both paths surface identical
+ * tool-call / source / tool-result parts.
+ */
+function convertToolItemToParts(item: Record<string, unknown>): ToolOutputPart[] {
+  const parts: ToolOutputPart[] = [];
+  const id = (item.id as string) ?? "";
+
+  switch (item.type as string) {
+    case "function_call":
+      parts.push({
+        type: "tool-call",
+        toolCallId: (item.call_id as string) ?? id,
+        toolName: (item.name as string) ?? "",
+        input: (item.arguments as string) ?? "",
+        providerExecuted: false,
+      });
+      break;
+
+    case "web_search_call": {
+      const action = item.action as Record<string, unknown> | undefined;
+      const sources = action?.sources as Array<Record<string, string>> | undefined;
+      if (sources) {
+        for (const source of sources) {
+          if (source.url) {
+            parts.push({
+              type: "source",
+              sourceType: "url",
+              id,
+              url: source.url,
+              title: source.title,
+            });
+          }
+        }
+      }
+      parts.push({
+        type: "tool-call",
+        toolCallId: id,
+        toolName: "web_search",
+        input: JSON.stringify({ query: action?.query, sources }),
+        providerExecuted: true,
+      });
+      break;
+    }
+
+    case "code_interpreter_call":
+      parts.push({
+        type: "tool-call",
+        toolCallId: id,
+        toolName: "code_interpreter",
+        input: JSON.stringify({
+          code: item.code,
+          outputs: item.outputs,
+          containerId: item.container_id,
+        }),
+        providerExecuted: true,
+      });
+      break;
+
+    case "web_extractor_call":
+      parts.push({
+        type: "tool-call",
+        toolCallId: id,
+        toolName: "web_extractor",
+        input: JSON.stringify({ urls: item.urls, goal: item.goal }),
+        providerExecuted: true,
+      });
+      if (item.output != null) {
+        parts.push({
+          type: "tool-result",
+          toolCallId: id,
+          toolName: "web_extractor",
+          result: item.output as string,
+        });
+      }
+      break;
+
+    case "file_search_call":
+      parts.push({
+        type: "tool-call",
+        toolCallId: id,
+        toolName: "file_search",
+        input: JSON.stringify({ queries: item.queries, results: item.results }),
+        providerExecuted: true,
+      });
+      break;
+
+    case "web_search_image_call":
+      parts.push({
+        type: "tool-call",
+        toolCallId: id,
+        toolName: "web_search_image",
+        input: JSON.stringify({ name: item.name, arguments: item.arguments }),
+        providerExecuted: true,
+      });
+      if (item.output != null) {
+        parts.push({
+          type: "tool-result",
+          toolCallId: id,
+          toolName: "web_search_image",
+          result: item.output as string,
+        });
+      }
+      break;
+
+    case "image_search_call":
+      parts.push({
+        type: "tool-call",
+        toolCallId: id,
+        toolName: "image_search",
+        input: JSON.stringify({ name: item.name, arguments: item.arguments }),
+        providerExecuted: true,
+      });
+      if (item.output != null) {
+        parts.push({
+          type: "tool-result",
+          toolCallId: id,
+          toolName: "image_search",
+          result: item.output as string,
+        });
+      }
+      break;
+
+    case "mcp_call": {
+      const toolName = (item.name as string) ?? (item.server_label as string) ?? "mcp";
+      parts.push({
+        type: "tool-call",
+        toolCallId: id,
+        toolName,
+        input: (item.arguments as string) ?? "{}",
+        providerExecuted: true,
+      });
+      if (item.output != null) {
+        parts.push({
+          type: "tool-result",
+          toolCallId: id,
+          toolName,
+          result: item.output as string,
+        });
+      }
+      break;
+    }
+  }
+
+  return parts;
+}
+
 function convertOutput(output: Array<Record<string, unknown>>): Array<LanguageModelV4Content> {
   const content: Array<LanguageModelV4Content> = [];
 
@@ -141,164 +297,9 @@ function convertOutput(output: Array<Record<string, unknown>>): Array<LanguageMo
         break;
       }
 
-      // Custom function call
-      case "function_call": {
-        content.push({
-          type: "tool-call",
-          toolCallId: (item.call_id as string) ?? "",
-          toolName: (item.name as string) ?? "",
-          input: item.arguments as string,
-          providerExecuted: false,
-        });
+      default:
+        content.push(...convertToolItemToParts(item));
         break;
-      }
-
-      // Provider-executed tools
-      case "web_search_call": {
-        const action = item.action as Record<string, unknown> | undefined;
-        const sources = action?.sources as Array<Record<string, string>> | undefined;
-
-        if (sources) {
-          for (const source of sources) {
-            if (source.url) {
-              content.push({
-                type: "source",
-                sourceType: "url",
-                id: (item.id as string) ?? "",
-                url: source.url,
-                title: source.title,
-              });
-            }
-          }
-        }
-
-        content.push({
-          type: "tool-call",
-          toolCallId: (item.id as string) ?? "",
-          toolName: "web_search",
-          input: JSON.stringify({
-            query: action?.query,
-            sources,
-          }),
-          providerExecuted: true,
-        });
-        break;
-      }
-
-      case "code_interpreter_call": {
-        content.push({
-          type: "tool-call",
-          toolCallId: (item.id as string) ?? "",
-          toolName: "code_interpreter",
-          input: JSON.stringify({
-            code: item.code,
-            outputs: item.outputs,
-            containerId: item.container_id,
-          }),
-          providerExecuted: true,
-        });
-        break;
-      }
-
-      case "web_extractor_call": {
-        content.push({
-          type: "tool-call",
-          toolCallId: (item.id as string) ?? "",
-          toolName: "web_extractor",
-          input: JSON.stringify({
-            urls: item.urls,
-            goal: item.goal,
-          }),
-          providerExecuted: true,
-        });
-        if (item.output) {
-          content.push({
-            type: "tool-result",
-            toolCallId: (item.id as string) ?? "",
-            toolName: "web_extractor",
-            result: item.output as string,
-          });
-        }
-        break;
-      }
-
-      case "file_search_call": {
-        content.push({
-          type: "tool-call",
-          toolCallId: (item.id as string) ?? "",
-          toolName: "file_search",
-          input: JSON.stringify({
-            queries: item.queries,
-            results: item.results,
-          }),
-          providerExecuted: true,
-        });
-        break;
-      }
-
-      case "web_search_image_call": {
-        content.push({
-          type: "tool-call",
-          toolCallId: (item.id as string) ?? "",
-          toolName: "web_search_image",
-          input: JSON.stringify({
-            name: item.name,
-            arguments: item.arguments,
-          }),
-          providerExecuted: true,
-        });
-        if (item.output) {
-          content.push({
-            type: "tool-result",
-            toolCallId: (item.id as string) ?? "",
-            toolName: "web_search_image",
-            result: item.output as string,
-          });
-        }
-        break;
-      }
-
-      case "image_search_call": {
-        content.push({
-          type: "tool-call",
-          toolCallId: (item.id as string) ?? "",
-          toolName: "image_search",
-          input: JSON.stringify({
-            name: item.name,
-            arguments: item.arguments,
-          }),
-          providerExecuted: true,
-        });
-        if (item.output) {
-          content.push({
-            type: "tool-result",
-            toolCallId: (item.id as string) ?? "",
-            toolName: "image_search",
-            result: item.output as string,
-          });
-        }
-        break;
-      }
-
-      case "mcp_call": {
-        const toolName = (item.name as string) ?? (item.server_label as string) ?? "mcp";
-        content.push({
-          type: "tool-call",
-          toolCallId: (item.id as string) ?? "",
-          toolName,
-          input: (item.arguments as string) ?? "{}",
-          providerExecuted: true,
-        });
-        if (item.output) {
-          content.push({
-            type: "tool-result",
-            toolCallId: (item.id as string) ?? "",
-            toolName,
-            result: item.output as string,
-          });
-        }
-        break;
-      }
     }
   }
 
@@ -673,30 +674,6 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV4 {
       }
     }
 
-    function emitSourceParts(
-      item: Record<string, unknown>,
-      controller: { enqueue: (part: LanguageModelV4StreamPart) => void },
-    ) {
-      // Provider-executed built-in tools: surface their sources/results.
-      if (item.type === "web_search_call") {
-        const action = item.action as Record<string, unknown> | undefined;
-        const sources = action?.sources as Array<Record<string, string>> | undefined;
-        if (sources) {
-          for (const source of sources) {
-            if (source.url) {
-              controller.enqueue({
-                type: "source",
-                sourceType: "url",
-                id: (item.id as string) ?? "",
-                url: source.url,
-                title: source.title,
-              });
-            }
-          }
-        }
-      }
-    }
-
     return {
       stream: response.pipeThrough(
         new TransformStream<
@@ -853,7 +830,12 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV4 {
                     break;
                   }
                   default:
-                    emitSourceParts(item, controller);
+                    // Provider-executed built-in tools (web_search_call,
+                    // code_interpreter_call, ...) arrive whole in output_item.done;
+                    // reuse the same mapping as doGenerate.
+                    for (const part of convertToolItemToParts(item)) {
+                      controller.enqueue(part);
+                    }
                     break;
                 }
                 break;
@@ -887,6 +869,13 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV4 {
             }
             if (activeTextId != null) {
               controller.enqueue({ type: "text-end", id: activeTextId });
+            }
+
+            // Finalize any tool calls that never received their done event.
+            for (const tc of toolCalls.values()) {
+              if (!tc.finished) {
+                finalizeToolCall(tc, tc.arguments, controller);
+              }
             }
 
             // A completed status with an emitted tool call should be reported as
