@@ -19,9 +19,10 @@
 - **Video Generation** - 文生视频和图生视频，异步轮询
 - **Speech Synthesis** - CosyVoice 和 Qwen-TTS 模型的文本转语音
 - **Transcription** - 短音频和长音频的语音转文字
-- **Built-in Tools** - 联网搜索、代码解释器、网页提取、文件搜索、以图搜图、MCP 集成
+- **Built-in Tools** - 联网搜索、代码解释器、网页提取、文件搜索、以文搜图、以图搜图、MCP 集成
 - **Thinking Mode** - 可配置预算的推理/思考模式
 - **Multi-region** - 北京、新加坡、美国、德国区域
+- **AI SDK V4** - 实现 LanguageModelV4 规范
 - **TypeScript-First** - 完整的类型安全支持
 
 ## 安装
@@ -356,9 +357,25 @@ const result = await generateText({
 
 基于文本描述搜索图片。
 
+```typescript
+const result = await generateText({
+  model: dashscope.responses("qwen3.5-flash"),
+  tools: [dashscope.responses.tools.webSearchImage()],
+  prompt: "搜索埃菲尔铁塔日落时的图片。",
+});
+```
+
 #### 以图搜图
 
 基于输入图片搜索相似图片。
+
+```typescript
+const result = await generateText({
+  model: dashscope.responses("qwen3.5-flash"),
+  tools: [dashscope.responses.tools.imageSearch()],
+  prompt: "搜索与 https://example.com/cat.jpg 相似的图片。",
+});
+```
 
 ### 多轮对话
 

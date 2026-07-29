@@ -22,6 +22,7 @@
 - **Built-in Tools** - Web search, code interpreter, web extractor, file search, web search image, image search, MCP integration
 - **Thinking Mode** - Enable reasoning/thinking with configurable budget
 - **Multi-region** - Beijing, Singapore, US, Germany regions
+- **AI SDK V4** - Implements the LanguageModelV4 specification
 - **TypeScript-First** - Full type safety with comprehensive TypeScript support
 
 ## Installation
@@ -354,11 +355,27 @@ Options: `serverProtocol`, `serverLabel`, `serverUrl`, `serverDescription`, `hea
 
 #### Web Search Image
 
-Text-to-image search. Search images based on text description.
+Text-to-image search. Search images based on a text description.
+
+```typescript
+const result = await generateText({
+  model: dashscope.responses("qwen3.5-flash"),
+  tools: [dashscope.responses.tools.webSearchImage()],
+  prompt: "Find images of the Eiffel Tower at sunset.",
+});
+```
 
 #### Image Search
 
 Image-to-image search. Search similar images based on an input image.
+
+```typescript
+const result = await generateText({
+  model: dashscope.responses("qwen3.5-flash"),
+  tools: [dashscope.responses.tools.imageSearch()],
+  prompt: "Find images similar to https://example.com/cat.jpg.",
+});
+```
 
 ### Multi-turn Conversation
 
