@@ -40,6 +40,9 @@
   "scripts": {
     "dev": "basis build --stub",
     "build": "vp pack",
+    "test": "vp test run",
+    "test:watch": "vp test",
+    "test:coverage": "vp test run --coverage",
     "prepack": "pnpm build"
   },
   "dependencies": {

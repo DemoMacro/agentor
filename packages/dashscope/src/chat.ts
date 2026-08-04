@@ -294,11 +294,30 @@ export class DashScopeChatLanguageModel implements LanguageModelV4 {
       // DashScope Chat guarantees JSON shape via response_format json_object
       // (which requires the word "json" in the prompt). Inject the schema so
       // the model also knows the target structure; the instruction satisfies
-      // the keyword requirement. Mirrors the Responses path (see utils).
-      messages.unshift({
-        role: "system",
-        content: buildJsonInstruction(options.responseFormat),
-      });
+      // the keyword requirement.
+      const jsonInstruction = buildJsonInstruction(options.responseFormat);
+
+      // Place the schema immediately AFTER the system block:
+      //  - ai-sdk passes the schema via responseFormat and leaves prompt
+      //    injection to the provider, so the position is ours to choose.
+      //  - Prefix caching caches the stable prefix up to the cache_control
+      //    marker, which sits at the system-segment tail. The schema varies
+      //    per call, so it must stay OUTSIDE that prefix — i.e. after every
+      //    system message. As a user message it also stays out of the Qwen3.5+
+      //    merged system segment, so a system-side marker keeps hitting.
+      //  - Sitting before the first real user turn, it never becomes the
+      //    trailing turn or splits the conversation mid-history.
+      // With no system message, fall back to a single system message (only
+      // one system message => no merge risk) for stronger schema adherence.
+      const lastSystemIdx = messages.findLastIndex((m) => m.role === "system");
+      if (lastSystemIdx === -1) {
+        messages.unshift({ role: "system", content: jsonInstruction });
+      } else {
+        messages.splice(lastSystemIdx + 1, 0, {
+          role: "user",
+          content: jsonInstruction,
+        });
+      }
     }
 
     const args: Record<string, unknown> = {
