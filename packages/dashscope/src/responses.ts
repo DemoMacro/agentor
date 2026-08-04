@@ -402,24 +402,22 @@ function convertInput(prompt: Array<LanguageModelV4Message>): Array<Record<strin
   const input: Array<Record<string, unknown>> = [];
 
   for (const message of prompt) {
-    const { role, content, providerOptions: msgProviderOptions } = message;
+    const { role, content } = message;
 
-    // system: content is always a string
+    // system: content is always a string. The Responses endpoint is an
+    // OpenAI-compatible layer that caches via the x-dashscope-session-cache
+    // request header (server-side session cache), not via cache_control on
+    // input content blocks (no DashScope documentation supports block-level
+    // cache_control here). cache_control is therefore intentionally NOT
+    // attached to input blocks; getArgs maps any cacheControl marker to that
+    // header instead.
     if (typeof content === "string") {
-      const cc = extractCacheControl(msgProviderOptions);
-      if (cc) {
-        input.push({
-          role,
-          content: [{ type: "input_text", text: content, ...cc }],
-        });
-      } else {
-        input.push({ role, content });
-      }
+      input.push({ role, content });
       continue;
     }
 
     // user / assistant / tool: content is an array of parts
-    const textParts: Array<{ text: string; cc?: Record<string, unknown> }> = [];
+    const textParts: Array<{ text: string }> = [];
     const fileParts: Array<Record<string, unknown>> = [];
     const functionCalls: Array<Record<string, unknown>> = [];
     const functionOutputs: Array<Record<string, unknown>> = [];
@@ -427,8 +425,7 @@ function convertInput(prompt: Array<LanguageModelV4Message>): Array<Record<strin
     for (const part of content) {
       switch (part.type) {
         case "text": {
-          const cc = extractCacheControl(part.providerOptions);
-          textParts.push({ text: part.text, cc });
+          textParts.push({ text: part.text });
           break;
         }
 
@@ -467,12 +464,12 @@ function convertInput(prompt: Array<LanguageModelV4Message>): Array<Record<strin
     }
 
     const messageParts = [
-      ...textParts.map((t) => ({ type: "input_text" as const, text: t.text, ...t.cc })),
+      ...textParts.map((t) => ({ type: "input_text" as const, text: t.text })),
       ...fileParts,
     ];
 
     if (messageParts.length > 0) {
-      if (messageParts.length === 1 && textParts.length === 1 && !textParts[0].cc) {
+      if (messageParts.length === 1 && textParts.length === 1) {
         input.push({ role, content: textParts[0].text });
       } else {
         input.push({ role, content: messageParts });
@@ -554,15 +551,35 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV4 {
       ...(instructions && { instructions }),
     };
 
-    return { args: body, warnings };
+    // The Responses endpoint caches via the x-dashscope-session-cache header
+    // (server-side session cache), not via cache_control on input content
+    // blocks. Map any cacheControl marker on the prompt to that header.
+    // Session cache is a whole-request flag, so a marker on ANY message or
+    // part — including tool-result / reasoning parts that convertInput drops
+    // — enables it: the marker expresses "cache this turn" intent. The marker
+    // type is intentionally unchecked, mirroring the anthropic provider's
+    // permissive cacheControl handling (ephemeral / 1h).
+    const sessionCache = options.prompt.some((message) => {
+      if (extractCacheControl(message.providerOptions)) return true;
+      if (Array.isArray(message.content)) {
+        return message.content.some((part) => extractCacheControl(part.providerOptions));
+      }
+      return false;
+    });
+
+    return {
+      args: body,
+      warnings,
+      headers: sessionCache ? { "x-dashscope-session-cache": "enable" } : undefined,
+    };
   }
 
   async doGenerate(options: LanguageModelV4CallOptions): Promise<LanguageModelV4GenerateResult> {
-    const { args: body, warnings } = await this.getArgs(options);
+    const { args: body, warnings, headers: sessionHeaders } = await this.getArgs(options);
 
     const { responseHeaders, value: response } = await postJsonToApi({
       url: `${this.config.baseURL}/compatible-mode/v1/responses`,
-      headers: combineHeaders(this.config.headers(), options.headers),
+      headers: combineHeaders(this.config.headers(), sessionHeaders, options.headers),
       body,
       failedResponseHandler,
       successfulResponseHandler: createJsonResponseHandler(responseSchema),
@@ -611,11 +628,11 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV4 {
   }
 
   async doStream(options: LanguageModelV4CallOptions): Promise<LanguageModelV4StreamResult> {
-    const { args: body, warnings } = await this.getArgs(options);
+    const { args: body, warnings, headers: sessionHeaders } = await this.getArgs(options);
 
     const { responseHeaders, value: response } = await postJsonToApi({
       url: `${this.config.baseURL}/compatible-mode/v1/responses`,
-      headers: combineHeaders(this.config.headers(), options.headers),
+      headers: combineHeaders(this.config.headers(), sessionHeaders, options.headers),
       body: { ...body, stream: true },
       failedResponseHandler,
       successfulResponseHandler: createEventSourceResponseHandler(streamChunkSchema),
