@@ -165,6 +165,8 @@ await generateText({
 
 ## Context Cache
 
+Applies to the Chat endpoint (`dashscope(modelId)`). The Responses endpoint (`dashscope.responses(modelId)`) caches via a session header instead — see [Session Cache](#session-cache).
+
 DashScope supports explicit caching to reduce cost and latency for repeated prefixes. Add `cacheControl` via `providerOptions` on messages or content parts:
 
 ```typescript
@@ -226,6 +228,12 @@ await generateText({
 
 > Implicit caching is enabled automatically for supported models — no configuration needed.
 
+### Combining with structured output
+
+By default the schema is sent via `response_format` (json_schema) and never enters the messages, so a `cacheControl` marker anywhere — system or user message — keeps hitting across calls regardless of how the schema changes.
+
+Only models that reject `json_schema` fall back to `json_object` + prompt injection. In that fallback the schema is injected as a `user` message after the system block, so it stays outside the system cache prefix and a system-side `cacheControl` marker still hits. Qwen3.5+ merges every system message into one cache segment and only honors a `cache_control` marker at the segment tail, so the schema is never injected as a system message. Prefer placing `cacheControl` on the system message; on user content parts in fallback mode, the injected schema lands before that content and may prevent it from being cached.
+
 ## JSON Output
 
 ### Structured Output with Schema
@@ -254,6 +262,20 @@ const result = await generateText({
 
 console.log(result.output);
 ```
+
+The provider sends the schema via native `response_format: { type: "json_schema" }` (strict). The schema is enforced server-side and travels in `response_format` — it never enters the messages, so a `cacheControl` marker anywhere keeps hitting even as the schema varies per call. Models that reject `json_schema` fall back automatically to `json_object` + prompt injection (best-effort; validate the output).
+
+#### Supported models
+
+Structured output is supported across the Qwen family and partner models, including `qwen3.7-max`, `qwen3-max`, `qwen3.7-plus`, `qwen-plus`, `qwen3.7-flash`, `qwen3.5-flash`, `qwen-flash`, `qwen-turbo`, `qwen3-coder`, `qwen-long`, the Qwen-VL models, and partner models (Kimi, DeepSeek, GLM, Stepfun). See the [official guide](https://help.aliyun.com/zh/model-studio/structured-output) for the full, up-to-date list.
+
+#### Thinking mode
+
+Models marked "non-thinking" may return non-strict JSON under thinking mode. For reliable structured output, avoid combining `enableThinking` with `Output.object`, or use the two-step repair: generate with the thinking model first, then normalize the result through a fast non-thinking model (e.g. `qwen-flash`) with `Output.object`.
+
+#### Avoid `maxOutputTokens`
+
+Do not set `maxOutputTokens` (`max_tokens`) with structured output — capping output tokens can truncate the JSON mid-stream and break parsing.
 
 ## Completions (FIM)
 
@@ -399,6 +421,10 @@ const second = await generateText({
   prompt: "Follow up question...",
 });
 ```
+
+### Session Cache
+
+The Responses endpoint caches via server-side **session cache**, not `cache_control` markers. Setting `cacheControl` on any message automatically sends the `x-dashscope-session-cache: enable` header — combine it with `previousResponseId` (above) to carry context across turns and hit the cache (minimum 1024 tokens, 5-minute TTL).
 
 ## Embedding
 

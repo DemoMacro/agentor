@@ -32,6 +32,7 @@ import {
   extractCacheControl,
   failedResponseHandler,
   fileDataToImageUrl,
+  isJsonSchemaUnsupportedError,
   type DashScopeConfig,
 } from "./utils";
 
@@ -241,6 +242,9 @@ export class DashScopeChatLanguageModel implements LanguageModelV4 {
   readonly specificationVersion = "v4" as const;
   readonly modelId: string;
   private readonly config: DashScopeConfig;
+  // Flipped on the first json_schema rejection so later calls on this model
+  // instance skip the probe and go straight to json_object + injection.
+  private jsonSchemaUnsupported = false;
 
   constructor(modelId: string, config: DashScopeConfig) {
     this.modelId = modelId;
@@ -281,11 +285,21 @@ export class DashScopeChatLanguageModel implements LanguageModelV4 {
 
     const messages = convertMessages(options.prompt);
 
-    if (options.responseFormat?.type === "json") {
-      // DashScope Chat guarantees JSON shape via response_format json_object
-      // (which requires the word "json" in the prompt). Inject the schema so
-      // the model also knows the target structure; the instruction satisfies
-      // the keyword requirement.
+    // Native json_schema (DashScope structured output) enforces the schema
+    // server-side AND keeps it out of the messages — so a cacheControl marker
+    // anywhere (system or user) keeps hitting even as the schema varies per
+    // call. Prefer it whenever a schema is present, unless this model instance
+    // has already rejected json_schema (jsonSchemaUnsupported).
+    const useNativeJsonSchema =
+      !this.jsonSchemaUnsupported &&
+      options.responseFormat?.type === "json" &&
+      options.responseFormat.schema != null;
+
+    if (options.responseFormat?.type === "json" && !useNativeJsonSchema) {
+      // json_object fallback: json_object only guarantees JSON shape (not the
+      // schema) and requires the word "json" in the prompt, so inject the
+      // schema as guidance — the instruction also satisfies the keyword
+      // requirement.
       const jsonInstruction = buildJsonInstruction(options.responseFormat);
 
       // Place the schema immediately AFTER the system block:
@@ -311,6 +325,26 @@ export class DashScopeChatLanguageModel implements LanguageModelV4 {
       }
     }
 
+    // Build response_format here (rather than inline in `args`) so the
+    // `type === "json"` guard narrows the discriminated union and exposes
+    // name/description/schema on the json variant.
+    let responseFormatArg: Record<string, unknown> | undefined;
+    if (options.responseFormat?.type === "json") {
+      responseFormatArg = useNativeJsonSchema
+        ? {
+            type: "json_schema",
+            json_schema: {
+              name: options.responseFormat.name ?? "schema",
+              ...(options.responseFormat.description != null && {
+                description: options.responseFormat.description,
+              }),
+              strict: true,
+              schema: options.responseFormat.schema,
+            },
+          }
+        : { type: "json_object" };
+    }
+
     const args: Record<string, unknown> = {
       model: this.modelId,
       messages,
@@ -321,9 +355,7 @@ export class DashScopeChatLanguageModel implements LanguageModelV4 {
       ...(options.presencePenalty != null && { presence_penalty: options.presencePenalty }),
       ...(options.stopSequences?.length && { stop: options.stopSequences }),
       ...(options.seed != null && { seed: options.seed }),
-      ...(options.responseFormat?.type === "json" && {
-        response_format: { type: "json_object" },
-      }),
+      ...(responseFormatArg && { response_format: responseFormatArg }),
       ...(apiTools != null && { tools: apiTools, tool_choice: toolChoice }),
       ...(dsOptions?.parallelToolCalls != null && {
         parallel_tool_calls: dsOptions.parallelToolCalls,
@@ -344,6 +376,28 @@ export class DashScopeChatLanguageModel implements LanguageModelV4 {
   }
 
   async doGenerate(options: LanguageModelV4CallOptions): Promise<LanguageModelV4GenerateResult> {
+    try {
+      return await this.doGenerateOnce(options);
+    } catch (error) {
+      if (this.shouldFallbackToJsonObject(error)) {
+        this.jsonSchemaUnsupported = true;
+        return await this.doGenerateOnce(options);
+      }
+      throw error;
+    }
+  }
+
+  // Decide whether a failed request should retry with json_object + injection.
+  // Only the first json_schema probe on an unsupported model raises this error;
+  // the json_object path always injects the "JSON" keyword so it never fires
+  // there. Once flipped, jsonSchemaUnsupported prevents further retries.
+  private shouldFallbackToJsonObject(error: unknown): boolean {
+    return !this.jsonSchemaUnsupported && isJsonSchemaUnsupportedError(error);
+  }
+
+  private async doGenerateOnce(
+    options: LanguageModelV4CallOptions,
+  ): Promise<LanguageModelV4GenerateResult> {
     const { args, warnings } = await this.getArgs(options);
 
     const { responseHeaders, value: response } = await postJsonToApi({
@@ -397,6 +451,20 @@ export class DashScopeChatLanguageModel implements LanguageModelV4 {
   }
 
   async doStream(options: LanguageModelV4CallOptions): Promise<LanguageModelV4StreamResult> {
+    try {
+      return await this.doStreamOnce(options);
+    } catch (error) {
+      if (this.shouldFallbackToJsonObject(error)) {
+        this.jsonSchemaUnsupported = true;
+        return await this.doStreamOnce(options);
+      }
+      throw error;
+    }
+  }
+
+  private async doStreamOnce(
+    options: LanguageModelV4CallOptions,
+  ): Promise<LanguageModelV4StreamResult> {
     const { args, warnings } = await this.getArgs(options);
     const body = { ...args, stream: true };
 

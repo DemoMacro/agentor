@@ -165,6 +165,8 @@ await generateText({
 
 ## 上下文缓存
 
+适用于 Chat 端点（`dashscope(modelId)`）。Responses 端点（`dashscope.responses(modelId)`）改用 session 请求头缓存——见 [Session 缓存](#session-缓存)。
+
 DashScope 支持显式缓存以减少重复前缀的成本和延迟。通过 `providerOptions` 在消息或内容块上添加 `cacheControl`：
 
 ```typescript
@@ -226,6 +228,12 @@ await generateText({
 
 > 支持的模型会自动启用隐式缓存，无需配置。
 
+### 与结构化输出共用
+
+默认情况下，schema 通过 `response_format`（json_schema）发送，不进入 messages，因此无论 `cacheControl` 标记在 system 还是 user 消息上，都能持续命中，即使每次请求 schema 变化。
+
+只有不支持 `json_schema` 的模型才会回退到 `json_object` + 提示词注入。在该回退路径下，schema 会作为 `user` 消息注入到 system 块之后，落在 system 缓存前缀之外，因此 system 侧的 `cacheControl` 标记仍能命中。Qwen3.5+ 会把所有 system 消息合并为单个缓存段，且只在段尾才会识别 `cache_control` 标记，所以 schema 绝不会作为 system 消息注入。建议把 `cacheControl` 设在 system 消息上；回退模式下若设在 user 内容块上，注入的 schema 会落在该内容之前，可能影响其缓存。
+
 ## JSON 输出
 
 ### 带 Schema 的结构化输出
@@ -254,6 +262,20 @@ const result = await generateText({
 
 console.log(result.output);
 ```
+
+provider 默认通过原生 `response_format: { type: "json_schema" }`（strict）发送 schema。schema 在服务端强制，且只存在于 `response_format`、不进入 messages——因此无论 `cacheControl` 标记在何处都能持续命中，即使每次请求 schema 变化。不支持 `json_schema` 的模型会自动回退到 `json_object` + 提示词注入（best-effort，请校验输出）。
+
+#### 支持的模型
+
+结构化输出在千问全系列及合作伙伴模型上均受支持，包括 `qwen3.7-max`、`qwen3-max`、`qwen3.7-plus`、`qwen-plus`、`qwen3.7-flash`、`qwen3.5-flash`、`qwen-flash`、`qwen-turbo`、`qwen3-coder`、`qwen-long`、千问 VL 系列，以及合作伙伴模型（Kimi、DeepSeek、GLM、Stepfun）。完整列表见[官方文档](https://help.aliyun.com/zh/model-studio/structured-output)。
+
+#### 思考模式
+
+标注"非思考模式"的模型在思考模式下可能返回非严格 JSON。如需稳定的结构化输出，避免将 `enableThinking` 与 `Output.object` 同时使用；或采用两步修复法：先用思考模型生成，再用快速的非思考模型（如 `qwen-flash`）配合 `Output.object` 规范化输出。
+
+#### 避免设置 `maxOutputTokens`
+
+使用结构化输出时不要设置 `maxOutputTokens`（即 `max_tokens`）——限制输出 token 可能导致 JSON 在流式输出中被截断、解析失败。
 
 ## Completions (FIM)
 
@@ -399,6 +421,10 @@ const second = await generateText({
   prompt: "Follow up question...",
 });
 ```
+
+### Session 缓存
+
+Responses 端点通过服务端 **Session 缓存**而非 `cache_control` 标记来缓存。在任意消息上设置 `cacheControl` 会自动发送 `x-dashscope-session-cache: enable` 请求头——配合上文的 `previousResponseId` 跨轮携带上下文即可命中缓存（最少 1024 token，有效期 5 分钟）。
 
 ## Embedding
 

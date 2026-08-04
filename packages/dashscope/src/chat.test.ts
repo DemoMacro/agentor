@@ -21,16 +21,50 @@ function chatCompletion(content: string): Record<string, unknown> {
   };
 }
 
+// The 400 body an unsupported model returns when handed json_schema with no
+// injected "json" keyword — the signal to retry once with json_object.
+function jsonSchemaUnsupportedError(): Record<string, unknown> {
+  return {
+    error: {
+      message:
+        "'messages' must contain the word 'json' in some form, to use 'response_format' of type 'json_object'.",
+    },
+  };
+}
+
 interface RecordedCall {
   url: string;
   body: Record<string, unknown>;
 }
 
-// Returns a fetch mock that records every request body for assertions.
+// Always-200 fetch mock.
 function mockFetch(content = '{"result":"ok"}') {
   const calls: RecordedCall[] = [];
   const fetch = vi.fn(async (url: string, init: RequestInit) => {
     calls.push({ url, body: JSON.parse(init.body as string) as Record<string, unknown> });
+    return new Response(JSON.stringify(chatCompletion(content)), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  });
+  return { fetch: fetch as unknown as typeof globalThis.fetch, calls };
+}
+
+// Fetch mock whose FIRST request fails with the json_schema "unsupported" 400;
+// every later request succeeds. Models that reject json_schema behave exactly
+// this way on the probe attempt.
+function mockFallbackFetch(content = '{"result":"ok"}') {
+  const calls: RecordedCall[] = [];
+  let first = true;
+  const fetch = vi.fn(async (url: string, init: RequestInit) => {
+    calls.push({ url, body: JSON.parse(init.body as string) as Record<string, unknown> });
+    if (first) {
+      first = false;
+      return new Response(JSON.stringify(jsonSchemaUnsupportedError()), {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      });
+    }
     return new Response(JSON.stringify(chatCompletion(content)), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -52,9 +86,67 @@ function userText(content: unknown): string {
   return "";
 }
 
-describe("DashScope chat: JSON schema injection", () => {
-  it("places the schema after the system block when system carries cacheControl", async () => {
+describe("DashScope chat: native json_schema structured output", () => {
+  it("sends native json_schema by default and injects no schema message", async () => {
     const { fetch, calls } = mockFetch();
+    const dashscope = createDashScope({ apiKey: "test", fetch });
+
+    await generateText({
+      model: dashscope("qwen-plus"),
+      prompt: "go",
+      output: Output.object({ schema }),
+    });
+
+    // schema enforced via response_format, never injected into messages, so the
+    // prompt prefix stays cache-stable and any cacheControl keeps hitting.
+    expect(calls[0].body.response_format).toMatchObject({
+      type: "json_schema",
+      json_schema: { strict: true },
+    });
+    const messages = calls[0].body.messages as Msg[];
+    expect(messages).toHaveLength(1);
+    expect(userText(messages[0].content)).toBe("go");
+  });
+
+  it("falls back to json_object + injection when the model rejects json_schema", async () => {
+    const { fetch, calls } = mockFallbackFetch();
+    const dashscope = createDashScope({ apiKey: "test", fetch });
+
+    await generateText({
+      model: dashscope("qwen3.5-flash"),
+      prompt: "go",
+      output: Output.object({ schema }),
+    });
+
+    // First attempt probes native json_schema; the 400 triggers one retry.
+    expect(calls).toHaveLength(2);
+    expect(calls[0].body.response_format).toMatchObject({ type: "json_schema" });
+    expect(calls[1].body.response_format).toEqual({ type: "json_object" });
+    expect((calls[1].body.messages as Msg[]).some((m) => String(m.content).includes("JSON"))).toBe(
+      true,
+    );
+  });
+
+  it("remembers the fallback so the next call on the same instance skips the probe", async () => {
+    const { fetch, calls } = mockFallbackFetch();
+    const dashscope = createDashScope({ apiKey: "test", fetch });
+    const model = dashscope("qwen3.5-flash");
+
+    await generateText({ model, prompt: "a", output: Output.object({ schema }) });
+    await generateText({ model, prompt: "b", output: Output.object({ schema }) });
+
+    // First generateObject: probe (json_schema) + retry (json_object) = 2 calls.
+    // Second generateObject: the instance remembers the rejection => 1 call.
+    expect(calls).toHaveLength(3);
+    expect(calls[0].body.response_format).toMatchObject({ type: "json_schema" });
+    expect(calls[1].body.response_format).toEqual({ type: "json_object" });
+    expect(calls[2].body.response_format).toEqual({ type: "json_object" });
+  });
+});
+
+describe("DashScope chat: schema injection on json_object fallback", () => {
+  it("places the schema after the system block when system carries cacheControl", async () => {
+    const { fetch, calls } = mockFallbackFetch();
     const dashscope = createDashScope({ apiKey: "test", fetch });
 
     await generateText({
@@ -68,16 +160,16 @@ describe("DashScope chat: JSON schema injection", () => {
       output: Output.object({ schema }),
     });
 
-    const messages = calls[0].body.messages as Msg[];
-    // [system(cc), user(schema), user(query)] — schema sits between system and query.
+    // calls[1] is the json_object fallback; schema sits between system and query.
+    const messages = calls[1].body.messages as Msg[];
     expect(messages.map((m) => m.role)).toEqual(["system", "user", "user"]);
     expect(String(messages[1].content)).toContain("JSON");
     expect(userText(messages[2].content)).toBe("List items.");
-    expect(calls[0].body.response_format).toEqual({ type: "json_object" });
+    expect(calls[1].body.response_format).toEqual({ type: "json_object" });
   });
 
   it("places the schema as system[0] when there is no system message", async () => {
-    const { fetch, calls } = mockFetch();
+    const { fetch, calls } = mockFallbackFetch();
     const dashscope = createDashScope({ apiKey: "test", fetch });
 
     await generateText({
@@ -86,14 +178,14 @@ describe("DashScope chat: JSON schema injection", () => {
       output: Output.object({ schema }),
     });
 
-    const messages = calls[0].body.messages as Msg[];
+    const messages = calls[1].body.messages as Msg[];
     expect(messages.map((m) => m.role)).toEqual(["system", "user"]);
     expect(String(messages[0].content)).toContain("JSON");
     expect(userText(messages[1].content)).toBe("List items.");
   });
 
   it("places the schema after the last system message when there are several", async () => {
-    const { fetch, calls } = mockFetch();
+    const { fetch, calls } = mockFallbackFetch();
     const dashscope = createDashScope({ apiKey: "test", fetch });
 
     await generateText({
@@ -106,13 +198,15 @@ describe("DashScope chat: JSON schema injection", () => {
       output: Output.object({ schema }),
     });
 
-    const messages = calls[0].body.messages as Msg[];
+    const messages = calls[1].body.messages as Msg[];
     expect(messages.map((m) => m.role)).toEqual(["system", "system", "user", "user"]);
     expect(String(messages[2].content)).toContain("JSON");
     expect(userText(messages[3].content)).toBe("go");
   });
+});
 
-  it("maps system cacheControl to a wire cache_control block (non-json mode)", async () => {
+describe("DashScope chat: cacheControl wiring (non-json mode)", () => {
+  it("maps system cacheControl to a wire cache_control block", async () => {
     const { fetch, calls } = mockFetch();
     const dashscope = createDashScope({ apiKey: "test", fetch });
 

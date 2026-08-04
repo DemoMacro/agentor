@@ -1,3 +1,4 @@
+import { APICallError } from "@ai-sdk/provider";
 import type { JSONObject, LanguageModelV4Usage, SharedV4FileData } from "@ai-sdk/provider";
 import {
   convertToBase64,
@@ -103,10 +104,12 @@ export function extractCacheControl(
 
 /**
  * Build a system instruction asking the model to reply with a JSON object
- * conforming to the given schema. Shared by the Chat and Responses paths:
- * neither DashScope endpoint can take the schema natively to enforce the
- * structure (Chat only guarantees JSON shape via response_format json_object;
- * Responses ignores text.format / response_format entirely).
+ * conforming to the given schema. Used by:
+ *  - the Chat fallback path — when a model rejects native `json_schema`, the
+ *    schema is injected as guidance for `json_object` mode (which only
+ *    guarantees valid JSON syntax, not the shape);
+ *  - the Responses path, which ignores `response_format` entirely, so the
+ *    schema can only be conveyed through the instructions.
  */
 export function buildJsonInstruction(format: {
   schema?: unknown;
@@ -127,6 +130,24 @@ export function buildJsonInstruction(format: {
     "Do not include any markdown fences, explanations, or surrounding text — output only the raw JSON.",
   );
   return lines.join("\n");
+}
+
+// --- Structured output fallback detection ---
+
+/**
+ * Detect the error an unsupported DashScope Chat model raises for
+ * `response_format: json_schema`. Such models silently degrade `json_schema`
+ * to `json_object` validation, and since the json_schema path sends no
+ * injected schema the prompt lacks the required "json" keyword, yielding a
+ * 400 quoting json_object. That specific shape is the reliable signal to
+ * retry once with `json_object` + prompt injection.
+ */
+export function isJsonSchemaUnsupportedError(error: unknown): boolean {
+  return (
+    APICallError.isInstance(error) &&
+    error.statusCode === 400 &&
+    /must contain the word 'json'/i.test(error.message)
+  );
 }
 
 // --- File part conversion ---
