@@ -83,6 +83,22 @@ export function convertResponsesUsage(usage: ResponsesUsage | undefined): Langua
   };
 }
 
+// --- Cache control (providerOptions.dashscope.cacheControl) ---
+
+// Shared by the Chat and Responses paths. Returns the wire cache_control
+// object (for Chat content blocks) or a truthy signal (for the Responses
+// session-cache header). The marker type is intentionally unchecked, mirroring
+// the anthropic provider's permissive cacheControl handling.
+export function extractCacheControl(
+  providerOptions?: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+  const ds = providerOptions?.dashscope as { cacheControl?: { type: string } } | undefined;
+  if (ds?.cacheControl) {
+    return { cache_control: { type: ds.cacheControl.type } };
+  }
+  return undefined;
+}
+
 // --- Structured output (JSON) instruction ---
 
 /**

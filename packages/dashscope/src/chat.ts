@@ -29,6 +29,7 @@ import { z } from "zod/v4";
 import type { DashScopeChatOptions } from "./types";
 import {
   buildJsonInstruction,
+  extractCacheControl,
   failedResponseHandler,
   fileDataToImageUrl,
   type DashScopeConfig,
@@ -126,16 +127,6 @@ const chatChunkSchema = z.object({
 });
 
 // --- Message conversion ---
-
-function extractCacheControl(
-  providerOptions?: Record<string, unknown>,
-): Record<string, unknown> | undefined {
-  const ds = providerOptions?.dashscope as { cacheControl?: { type: string } } | undefined;
-  if (ds?.cacheControl) {
-    return { cache_control: { type: ds.cacheControl.type } };
-  }
-  return undefined;
-}
 
 function convertMessages(
   prompt: LanguageModelV4CallOptions["prompt"],

@@ -30,6 +30,7 @@ import type { DashScopeResponsesOptions } from "./types";
 import {
   buildJsonInstruction,
   convertResponsesUsage,
+  extractCacheControl,
   failedResponseHandler,
   fileDataToImageUrl,
   type DashScopeConfig,
@@ -386,16 +387,6 @@ function convertToolResultOutput(output: LanguageModelV4ToolResultPart["output"]
     return (output as { type: "text"; value: string }).value;
   }
   return JSON.stringify(output);
-}
-
-function extractCacheControl(
-  providerOptions?: Record<string, unknown>,
-): Record<string, unknown> | undefined {
-  const ds = providerOptions?.dashscope as { cacheControl?: { type: string } } | undefined;
-  if (ds?.cacheControl) {
-    return { cache_control: { type: ds.cacheControl.type } };
-  }
-  return undefined;
 }
 
 function convertInput(prompt: Array<LanguageModelV4Message>): Array<Record<string, unknown>> {
