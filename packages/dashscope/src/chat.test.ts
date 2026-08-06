@@ -227,3 +227,42 @@ describe("DashScope chat: cacheControl wiring (non-json mode)", () => {
     ]);
   });
 });
+
+describe("DashScope chat: ocr_options passthrough", () => {
+  it("forwards ocrOptions as ocr_options", async () => {
+    const { fetch, calls } = mockFetch();
+    const dashscope = createDashScope({ apiKey: "test", fetch });
+
+    await generateText({
+      model: dashscope("qwen3.5-ocr"),
+      prompt: "ocr",
+      providerOptions: { dashscope: { ocrOptions: { task: "text_recognition" } } },
+    });
+
+    expect(calls[0].body.ocr_options).toEqual({ task: "text_recognition" });
+  });
+
+  it("maps taskConfig.resultSchema to task_config.result_schema", async () => {
+    const { fetch, calls } = mockFetch();
+    const dashscope = createDashScope({ apiKey: "test", fetch });
+    const resultSchema = { 发票号码: "invoice number" };
+
+    await generateText({
+      model: dashscope("qwen3.5-ocr"),
+      prompt: "extract",
+      providerOptions: {
+        dashscope: {
+          ocrOptions: {
+            task: "key_information_extraction",
+            taskConfig: { resultSchema },
+          },
+        },
+      },
+    });
+
+    expect(calls[0].body.ocr_options).toEqual({
+      task: "key_information_extraction",
+      task_config: { result_schema: resultSchema },
+    });
+  });
+});

@@ -426,6 +426,81 @@ const second = await generateText({
 
 The Responses endpoint caches via server-side **session cache**, not `cache_control` markers. Setting `cacheControl` on any message automatically sends the `x-dashscope-session-cache: enable` header — combine it with `previousResponseId` (above) to carry context across turns and hit the cache (minimum 1024 tokens, 5-minute TTL).
 
+### OCR (Qwen-OCR)
+
+Qwen-OCR models (`qwen3.5-ocr`, `qwen-vl-ocr`, `qwen-vl-ocr-latest`) extract text and structured data from images and PDFs. Both endpoints accept `providerOptions.dashscope.ocrOptions`; the Responses endpoint officially honors the built-in tasks (and is the only one that accepts PDF). On Chat, pass the image as a `file` part and drive extraction through the text prompt (`data` is a `Uint8Array`):
+
+```typescript
+const result = await generateText({
+  model: dashscope("qwen3.5-ocr"),
+  messages: [
+    {
+      role: "user",
+      content: [
+        { type: "text", text: "Extract the invoice number, date, and total as JSON." },
+        { type: "file", data: imageBytes, mediaType: "image/png" },
+      ],
+    },
+  ],
+});
+```
+
+On the Responses endpoint, set a built-in task via `ocrOptions.task`:
+
+| `ocrOptions.task`            | Output                                           |
+| ---------------------------- | ------------------------------------------------ |
+| `text_recognition`           | Plain text                                       |
+| `advanced_recognition`       | Text + bounding boxes                            |
+| `key_information_extraction` | Structured JSON (uses `taskConfig.resultSchema`) |
+| `table_parsing`              | HTML tables                                      |
+| `document_parsing`           | LaTeX document transcription                     |
+| `formula_recognition`        | LaTeX formulas                                   |
+| `multi_lan`                  | Non-Chinese/English text                         |
+
+Extract structured fields from a receipt image (`data` is a `Uint8Array`):
+
+```typescript
+const result = await generateText({
+  model: dashscope.responses("qwen3.5-ocr"),
+  messages: [
+    {
+      role: "user",
+      content: [
+        { type: "text", text: "Extract key fields." },
+        { type: "file", data: imageBytes, mediaType: "image/png" },
+      ],
+    },
+  ],
+  providerOptions: {
+    dashscope: {
+      ocrOptions: {
+        task: "key_information_extraction",
+        taskConfig: {
+          resultSchema: { invoiceNumber: "invoice number", date: "issue date" },
+        },
+      },
+    },
+  },
+});
+```
+
+PDF document parsing — **Responses endpoint only** (Chat does not accept PDF). Pass the PDF as a `file` part with `mediaType: "application/pdf"`; the provider maps non-image files to `input_file`:
+
+```typescript
+const result = await generateText({
+  model: dashscope.responses("qwen3.5-ocr"),
+  messages: [
+    {
+      role: "user",
+      content: [{ type: "file", data: pdfBytes, mediaType: "application/pdf" }],
+    },
+  ],
+  providerOptions: {
+    dashscope: { ocrOptions: { task: "document_parsing" } },
+  },
+});
+```
+
 ## Embedding
 
 ```typescript

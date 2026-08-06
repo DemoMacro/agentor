@@ -426,6 +426,81 @@ const second = await generateText({
 
 Responses 端点通过服务端 **Session 缓存**而非 `cache_control` 标记来缓存。在任意消息上设置 `cacheControl` 会自动发送 `x-dashscope-session-cache: enable` 请求头——配合上文的 `previousResponseId` 跨轮携带上下文即可命中缓存（最少 1024 token，有效期 5 分钟）。
 
+### OCR（Qwen-OCR）
+
+Qwen-OCR 模型（`qwen3.5-ocr`、`qwen-vl-ocr`、`qwen-vl-ocr-latest`）从图像和 PDF 中提取文本与结构化数据。两个端点都接受 `providerOptions.dashscope.ocrOptions`；Responses 端点官方支持下列内置任务（且是唯一支持 PDF 的端点）。在 Chat 上，将图像以 `file` part 传入，通过 text 提示词驱动提取（`data` 为 `Uint8Array`）：
+
+```typescript
+const result = await generateText({
+  model: dashscope("qwen3.5-ocr"),
+  messages: [
+    {
+      role: "user",
+      content: [
+        { type: "text", text: "以 JSON 提取发票号码、日期和金额。" },
+        { type: "file", data: imageBytes, mediaType: "image/png" },
+      ],
+    },
+  ],
+});
+```
+
+在 Responses 端点，通过 `ocrOptions.task` 设置内置任务：
+
+| `ocrOptions.task`            | 输出                                          |
+| ---------------------------- | --------------------------------------------- |
+| `text_recognition`           | 纯文本                                        |
+| `advanced_recognition`       | 文本 + 边界框                                 |
+| `key_information_extraction` | 结构化 JSON（使用 `taskConfig.resultSchema`） |
+| `table_parsing`              | HTML 表格                                     |
+| `document_parsing`           | LaTeX 文档转录                                |
+| `formula_recognition`        | LaTeX 公式                                    |
+| `multi_lan`                  | 中英文以外的文字                              |
+
+从票据图像提取结构化字段（`data` 为 `Uint8Array`）：
+
+```typescript
+const result = await generateText({
+  model: dashscope.responses("qwen3.5-ocr"),
+  messages: [
+    {
+      role: "user",
+      content: [
+        { type: "text", text: "提取关键字段。" },
+        { type: "file", data: imageBytes, mediaType: "image/png" },
+      ],
+    },
+  ],
+  providerOptions: {
+    dashscope: {
+      ocrOptions: {
+        task: "key_information_extraction",
+        taskConfig: {
+          resultSchema: { invoiceNumber: "发票号码", date: "日期" },
+        },
+      },
+    },
+  },
+});
+```
+
+PDF 文档解析——**仅 Responses 端点支持**（Chat 不接受 PDF）。将 PDF 以 `file` part 传入并设置 `mediaType: "application/pdf"`，provider 会把非图片文件映射为 `input_file`：
+
+```typescript
+const result = await generateText({
+  model: dashscope.responses("qwen3.5-ocr"),
+  messages: [
+    {
+      role: "user",
+      content: [{ type: "file", data: pdfBytes, mediaType: "application/pdf" }],
+    },
+  ],
+  providerOptions: {
+    dashscope: { ocrOptions: { task: "document_parsing" } },
+  },
+});
+```
+
 ## Embedding
 
 ```typescript

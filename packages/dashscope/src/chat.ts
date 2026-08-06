@@ -29,10 +29,12 @@ import { z } from "zod/v4";
 import type { DashScopeChatOptions } from "./types";
 import {
   buildJsonInstruction,
+  buildOcrOptions,
   extractCacheControl,
   failedResponseHandler,
   fileDataToImageUrl,
   isJsonSchemaUnsupportedError,
+  ocrOptionsSchema,
   type DashScopeConfig,
 } from "./utils";
 
@@ -45,6 +47,7 @@ const chatOptionsSchema = z.object({
   enableSearch: z.boolean().optional(),
   searchStrategy: z.enum(["enable", "enable_with_history", "agent_max"]).optional(),
   enableCodeInterpreter: z.boolean().optional(),
+  ocrOptions: ocrOptionsSchema.optional(),
 });
 
 const usageSchema = z.object({
@@ -369,6 +372,9 @@ export class DashScopeChatLanguageModel implements LanguageModelV4 {
       }),
       ...(dsOptions?.enableCodeInterpreter != null && {
         enable_code_interpreter: dsOptions.enableCodeInterpreter,
+      }),
+      ...(dsOptions?.ocrOptions && {
+        ocr_options: buildOcrOptions(dsOptions.ocrOptions),
       }),
     };
 

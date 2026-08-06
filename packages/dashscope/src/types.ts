@@ -33,6 +33,26 @@ export interface DashScopeProviderSettings {
   includeUsage?: boolean;
 }
 
+// --- OCR options (shared by Chat and Responses) ---
+// @see https://help.aliyun.com/zh/model-studio/qwen-vl-ocr
+
+export interface DashScopeOcrOptions {
+  /** Built-in task type. */
+  task:
+    | "advanced_recognition"
+    | "key_information_extraction"
+    | "table_parsing"
+    | "document_parsing"
+    | "formula_recognition"
+    | "text_recognition"
+    | "multi_lan";
+  /** Task configuration; only `key_information_extraction` uses `resultSchema`. */
+  taskConfig?: {
+    /** Custom field-extraction JSON template (key -> description). */
+    resultSchema?: Record<string, unknown>;
+  };
+}
+
 // --- Chat options ---
 
 export interface DashScopeChatOptions {
@@ -53,6 +73,13 @@ export interface DashScopeChatOptions {
   searchStrategy?: "enable" | "enable_with_history" | "agent_max";
   /** Enable code interpreter (requires enableThinking). */
   enableCodeInterpreter?: boolean;
+  /**
+   * Built-in OCR task for Qwen-OCR models (maps to `ocr_options`). The
+   * OpenAI-compatible Chat endpoint does not officially honor built-in OCR
+   * tasks via parameter — prefer the Responses endpoint, or emulate the task
+   * through the text prompt.
+   */
+  ocrOptions?: DashScopeOcrOptions;
 }
 
 // --- Responses API options ---
@@ -66,6 +93,8 @@ export interface DashScopeResponsesOptions {
   conversation?: string;
   instructions?: string;
   includeUsage?: boolean;
+  /** Built-in OCR task for Qwen-OCR models (maps to the top-level `ocr_options`). */
+  ocrOptions?: DashScopeOcrOptions;
 }
 
 // --- Responses namespace ---

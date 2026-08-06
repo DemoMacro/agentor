@@ -8,6 +8,8 @@ import {
 } from "@ai-sdk/provider-utils";
 import { z } from "zod/v4";
 
+import type { DashScopeOcrOptions } from "./types";
+
 // --- Config ---
 
 export interface DashScopeConfig {
@@ -148,6 +150,36 @@ export function isJsonSchemaUnsupportedError(error: unknown): boolean {
     error.statusCode === 400 &&
     /must contain the word 'json'/i.test(error.message)
   );
+}
+
+// --- OCR options (shared by Chat and Responses) ---
+// @see https://help.aliyun.com/zh/model-studio/qwen-vl-ocr
+
+export const ocrOptionsSchema = z.object({
+  task: z.enum([
+    "advanced_recognition",
+    "key_information_extraction",
+    "table_parsing",
+    "document_parsing",
+    "formula_recognition",
+    "text_recognition",
+    "multi_lan",
+  ]),
+  taskConfig: z
+    .object({
+      resultSchema: z.record(z.string(), z.unknown()).optional(),
+    })
+    .optional(),
+});
+
+/** Convert camelCase ocrOptions to the snake_case `ocr_options` wire object. */
+export function buildOcrOptions(ocrOptions: DashScopeOcrOptions): Record<string, unknown> {
+  return {
+    task: ocrOptions.task,
+    ...(ocrOptions.taskConfig && {
+      task_config: { result_schema: ocrOptions.taskConfig.resultSchema },
+    }),
+  };
 }
 
 // --- File part conversion ---

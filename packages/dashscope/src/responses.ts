@@ -29,10 +29,12 @@ import { z } from "zod/v4";
 import type { DashScopeResponsesOptions } from "./types";
 import {
   buildJsonInstruction,
+  buildOcrOptions,
   convertResponsesUsage,
   extractCacheControl,
   failedResponseHandler,
   fileDataToImageUrl,
+  ocrOptionsSchema,
   type DashScopeConfig,
   type ResponsesUsage,
 } from "./utils";
@@ -51,6 +53,7 @@ const responsesOptionsSchema = zodSchema(
     conversation: z.string().optional(),
     instructions: z.string().optional(),
     includeUsage: z.boolean().optional(),
+    ocrOptions: ocrOptionsSchema.optional(),
   }),
 );
 
@@ -378,7 +381,14 @@ function prepareTools(tools: LanguageModelV4CallOptions["tools"]): Array<Record<
 
 function convertFilePart(part: LanguageModelV4FilePart): Record<string, unknown> | undefined {
   const url = fileDataToImageUrl(part.data, part.mediaType);
-  return url ? { type: "input_image", image_url: url } : undefined;
+  if (!url) return undefined;
+  // V4 normalizes image/* mediaTypes to the top-level "image". Qwen-OCR models
+  // parse PDF and other non-image documents via `input_file` on the Responses
+  // endpoint (Chat does not support PDF); images keep using `input_image`.
+  if (part.mediaType.startsWith("image")) {
+    return { type: "input_image", image_url: url };
+  }
+  return { type: "input_file", file_url: url };
 }
 
 function convertToolResultOutput(output: LanguageModelV4ToolResultPart["output"]): string {
@@ -528,9 +538,10 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV4 {
       }),
       ...(options.stopSequences?.length && { stop: options.stopSequences }),
       ...(tools.length > 0 && { tools }),
-      ...(options.toolChoice && {
-        tool_choice: mapToolChoice(options.toolChoice),
-      }),
+      ...(tools.length > 0 &&
+        options.toolChoice && {
+          tool_choice: mapToolChoice(options.toolChoice),
+        }),
       ...(dsOptions?.enableThinking != null && {
         enable_thinking: dsOptions.enableThinking,
       }),
@@ -540,6 +551,9 @@ export class DashScopeResponsesLanguageModel implements LanguageModelV4 {
       }),
       ...(dsOptions?.conversation && { conversation: dsOptions.conversation }),
       ...(instructions && { instructions }),
+      ...(dsOptions?.ocrOptions && {
+        ocr_options: buildOcrOptions(dsOptions.ocrOptions),
+      }),
     };
 
     // The Responses endpoint caches via the x-dashscope-session-cache header
