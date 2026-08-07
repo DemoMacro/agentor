@@ -305,6 +305,43 @@ const card: CardElement = {
 await adapter.postMessage(threadId, card);
 ```
 
+### Card Button Callback Loop
+
+Button clicks on `button_interaction` / `vote_interaction` / `multiple_interaction` cards are wired into chat-sdk's standard interaction mechanism: when a user clicks, WeCom calls back `template_card_event`; the adapter parses it and invokes `chat.processAction`, mapping `ButtonElement.id` to `ActionEvent.actionId` — respond via `chat.onAction(actionId, handler)`.
+
+> Only **App (Application)** mode supports button callbacks (Webhook group bot and Bot modes have no interaction callback).
+
+The `ResponseCode` from the callback XML (valid for 72 hours, one-time use) is consumed by `updateTemplateCard` to update card state (e.g. mark a button "Done"). Sending a card also returns `response_code` in the `/message/send` response; either code can be used to update.
+
+```typescript
+import { isWeComAppAdapter, type WeComAppCallbackMessage } from "@agentor/chat-wecom";
+
+// 1. Register a button-click handler (actionId = ButtonElement.id)
+chat.onAction("approve", async (event) => {
+  const raw = event.raw as WeComAppCallbackMessage;
+  console.log(`${event.user.userId} clicked ${event.actionId}, taskId=${raw.taskId}`);
+
+  // 2. Use the responseCode from the callback to disable the button
+  if (isWeComAppAdapter(event.adapter) && raw.responseCode) {
+    await event.adapter.updateTemplateCard({
+      responseCode: raw.responseCode,
+      replaceName: "Approved",
+    });
+  }
+});
+```
+
+`updateTemplateCard` parameters:
+
+| Parameter                                   | Description                                                                 |
+| ------------------------------------------- | --------------------------------------------------------------------------- |
+| `responseCode`                              | From callback `raw.responseCode` or the send response `raw.responseCode`    |
+| `replaceName`                               | Replace button text and disable it (mutually exclusive with `templateCard`) |
+| `templateCard`                              | Replace the whole card (mutually exclusive with `replaceName`)              |
+| `userIds` / `partyIds` / `tagIds` / `atAll` | Update scope; defaults to `atAll` when none provided                        |
+
+Vote / multiple-choice submissions are in `raw.selectedItems` (`{ questionKey, optionIds }[]`).
+
 ## Encryption
 
 All callback communication uses AES-256-CBC encryption and SHA1 signature verification:

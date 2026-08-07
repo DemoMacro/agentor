@@ -4,10 +4,15 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { Message, type Adapter, type FileUpload } from "chat";
+import { type CardElement, Message, type Adapter, type FileUpload } from "chat";
 import { H3, fromWebHandler, serve } from "h3";
 
-import { createWeComAppAdapter, downloadAppMedia } from "../src";
+import {
+  createWeComAppAdapter,
+  downloadAppMedia,
+  isWeComAppAdapter,
+  type WeComAppCallbackMessage,
+} from "../src";
 
 const CORP_ID = process.env.WECOM_APP_CORP_ID!;
 const CORP_SECRET = process.env.WECOM_APP_CORP_SECRET!;
@@ -108,6 +113,48 @@ async function recallMessage() {
   console.log("Message recalled successfully");
 }
 
+// --- 发送交互卡片（按钮回调闭环）---
+
+async function sendCard() {
+  console.log("\n=== Send Interactive Card ===");
+
+  if (!APP_USER_ID) {
+    console.log("Skipped: WECOM_APP_USER_ID not configured");
+    return;
+  }
+
+  const adapter = createWeComAppAdapter({
+    corpId: CORP_ID,
+    corpSecret: CORP_SECRET,
+    agentId: AGENT_ID,
+    token: APP_TOKEN,
+    encodingAESKey: APP_ENCODING_AES_KEY,
+  });
+  const threadId = adapter.encodeThreadId({ corpId: CORP_ID, userId: APP_USER_ID });
+
+  const card: CardElement = {
+    type: "card",
+    title: "审批通知",
+    subtitle: "请审批以下申请",
+    children: [
+      { type: "fields", children: [{ type: "field", label: "申请人", value: "张三" }] },
+      {
+        type: "actions",
+        children: [
+          { type: "button", label: "同意", style: "primary", id: "approve" },
+          { type: "button", label: "拒绝", style: "danger", id: "reject" },
+        ],
+      },
+    ],
+  };
+
+  const result = await adapter.postMessage(threadId, card);
+  console.log("Card Message ID:", result.id);
+  console.log("Task ID:", result.raw.taskId);
+  console.log("Response Code:", result.raw.responseCode);
+  console.log("在企业微信点击按钮，回调服务器会通过 processAction 更新卡片状态");
+}
+
 // --- 启动回调服务器 ---
 
 async function startServer() {
@@ -205,6 +252,22 @@ async function startServer() {
         console.log(`  Reply sent, ID: ${result.id}`);
       }
     },
+    processAction: async (event: {
+      actionId: string;
+      user: { userId: string };
+      raw: WeComAppCallbackMessage;
+      adapter: unknown;
+    }) => {
+      const raw = event.raw;
+      console.log(
+        `\n[Card Action] ${event.user.userId} 点击了 "${event.actionId}" (taskId=${raw.taskId})`,
+      );
+      if (raw.responseCode && isWeComAppAdapter(event.adapter)) {
+        const replaceName = event.actionId === "approve" ? "已同意" : "已拒绝";
+        await event.adapter.updateTemplateCard({ responseCode: raw.responseCode, replaceName });
+        console.log(`  卡片已更新：按钮 → ${replaceName}`);
+      }
+    },
   } as never);
 
   const app = new H3();
@@ -253,6 +316,7 @@ async function main() {
     await sendMessage();
     await sendImageMessage();
     await recallMessage();
+    await sendCard();
     await startServer();
   } catch (error) {
     console.error("Error:", error);

@@ -29,6 +29,8 @@ import type {
   WeComAppMessage,
   WeComAppSendResponse,
   WeComCallbackQuery,
+  WeComSelectedItem,
+  WeComUpdateTemplateCardParams,
 } from "../types";
 import { wecomRequest, extractXmlField } from "../utils";
 
@@ -61,6 +63,11 @@ export function parseCallbackXml(xml: string): WeComAppCallbackMessage {
     description: extractXmlField(xml, "Description") ?? undefined,
     url: extractXmlField(xml, "Url") ?? undefined,
     event: extractXmlField(xml, "Event") ?? undefined,
+    eventKey: extractXmlField(xml, "EventKey") ?? undefined,
+    taskId: extractXmlField(xml, "TaskId") ?? undefined,
+    cardType: extractXmlField(xml, "CardType") ?? undefined,
+    responseCode: extractXmlField(xml, "ResponseCode") ?? undefined,
+    selectedItems: extractSelectedItems(xml),
     agentId: extractXmlField(xml, "AgentID") ?? undefined,
   };
 }
@@ -141,17 +148,46 @@ export class WeComAppAdapter implements Adapter<WeComAppThreadId, WeComAppCallba
 
     const callbackMessage = parseCallbackXml(decryptedXml);
 
-    if (this.chat && callbackMessage.msgType !== "event" && callbackMessage.msgType !== "") {
+    if (this.chat) {
       const threadId = this.encodeThreadId({
         corpId: this.config.corpId,
         userId: callbackMessage.fromUserName,
       });
-      void this.chat.processMessage(
-        this,
-        threadId,
-        async () => this.parseMessage(callbackMessage),
-        options,
-      );
+
+      // 模板卡片按钮点击 → chat-sdk 交互动作机制（processAction）
+      // EventKey 即发送时 ButtonElement.id，映射为 ActionEvent.actionId
+      if (
+        callbackMessage.msgType === "event" &&
+        (callbackMessage.event === "template_card_event" ||
+          callbackMessage.event === "template_card_menu_event")
+      ) {
+        void this.chat.processAction(
+          {
+            adapter: this,
+            actionId: callbackMessage.eventKey ?? callbackMessage.event ?? "",
+            messageId: callbackMessage.taskId ?? callbackMessage.responseCode ?? "",
+            threadId,
+            user: {
+              userId: callbackMessage.fromUserName,
+              userName: callbackMessage.fromUserName,
+              fullName: callbackMessage.fromUserName,
+              isBot: false,
+              isMe: false,
+            },
+            value: callbackMessage.eventKey,
+            raw: callbackMessage,
+          },
+          options,
+        );
+      } else if (callbackMessage.msgType !== "event" && callbackMessage.msgType !== "") {
+        // 普通用户消息进对话流
+        void this.chat.processMessage(
+          this,
+          threadId,
+          async () => this.parseMessage(callbackMessage),
+          options,
+        );
+      }
     }
 
     const encryptedReply = await encryptReply(
@@ -245,7 +281,10 @@ export class WeComAppAdapter implements Adapter<WeComAppThreadId, WeComAppCallba
 
     return {
       id: result.msgid ?? String(Date.now()),
-      raw: {} as WeComAppCallbackMessage,
+      raw: {
+        taskId: templateCard.task_id,
+        responseCode: result.response_code,
+      } as WeComAppCallbackMessage,
       threadId: `wecom-app:${this.config.corpId}:${userId}`,
     };
   }
@@ -314,6 +353,44 @@ export class WeComAppAdapter implements Adapter<WeComAppThreadId, WeComAppCallba
     _message: AdapterPostableMessage,
   ): Promise<RawMessage<WeComAppCallbackMessage>> {
     throw new NotImplementedError("wecom-app: editMessage not supported");
+  }
+
+  // https://developer.work.weixin.qq.com/document/path/96459
+  // 更新已发送的可回调模版卡片：replaceName 把按钮变灰替换文案，templateCard 整卡替换
+  async updateTemplateCard(params: WeComUpdateTemplateCardParams): Promise<void> {
+    if (!params.replaceName && !params.templateCard) {
+      throw new ValidationError(
+        "wecom-app",
+        "updateTemplateCard requires either replaceName or templateCard",
+      );
+    }
+
+    const accessToken = await this.getAccessToken();
+    // 未显式指定范围时默认更新所有接收者（群卡常见场景）
+    const useAtAll = params.atAll || (!params.userIds && !params.partyIds && !params.tagIds);
+
+    const body: Record<string, unknown> = {
+      agentid: this.config.agentId,
+      response_code: params.responseCode,
+      ...(useAtAll
+        ? { atall: 1 }
+        : {
+            ...(params.userIds && { userids: params.userIds }),
+            ...(params.partyIds && { partyids: params.partyIds }),
+            ...(params.tagIds && { tagids: params.tagIds }),
+          }),
+      ...(params.replaceName
+        ? { button: { replace_name: params.replaceName } }
+        : { template_card: params.templateCard }),
+    };
+
+    await wecomRequest({
+      method: "POST",
+      url: "/cgi-bin/message/update_template_card",
+      params: { access_token: accessToken },
+      body,
+      fetch: this.config.fetch,
+    });
   }
 
   // https://developer.work.weixin.qq.com/document/path/94867
@@ -465,6 +542,30 @@ function parseAppAttachments(raw: WeComAppCallbackMessage): Attachment[] {
   return attachments;
 }
 
+// 解析模板卡片回调的 SelectedItems（投票/多选型卡片用户提交的选项）
+// https://developer.work.weixin.qq.com/document/path/90240
+function extractSelectedItems(xml: string): WeComSelectedItem[] | undefined {
+  const blockMatch = xml.match(/<SelectedItems>([\s\S]*?)<\/SelectedItems>/);
+  if (!blockMatch) return undefined;
+
+  const items: WeComSelectedItem[] = [];
+  const itemRegex = /<SelectedItem>([\s\S]*?)<\/SelectedItem>/g;
+  let itemMatch: RegExpExecArray | null;
+  while ((itemMatch = itemRegex.exec(blockMatch[1])) !== null) {
+    const questionKey = extractXmlField(itemMatch[1], "QuestionKey");
+    if (!questionKey) continue;
+    const optionIds: string[] = [];
+    const optRegex =
+      /<OptionId><!\[CDATA\[([\s\S]*?)\]\]><\/OptionId>|<OptionId>([\s\S]*?)<\/OptionId>/g;
+    let optMatch: RegExpExecArray | null;
+    while ((optMatch = optRegex.exec(itemMatch[1])) !== null) {
+      optionIds.push(optMatch[1] ?? optMatch[2] ?? "");
+    }
+    items.push({ questionKey, optionIds });
+  }
+  return items.length > 0 ? items : undefined;
+}
+
 export function createWeComAppAdapter(config?: Partial<WeComAppConfig>): WeComAppAdapter {
   const corpId = config?.corpId ?? process.env.WECOM_APP_CORP_ID;
   const corpSecret = config?.corpSecret ?? process.env.WECOM_APP_CORP_SECRET;
@@ -500,4 +601,9 @@ export function createWeComAppAdapter(config?: Partial<WeComAppConfig>): WeComAp
     userName: config?.userName,
     fetch: config?.fetch,
   });
+}
+
+// 类型守卫：从 ActionEvent.adapter 取回具体适配器类型以调用 updateTemplateCard
+export function isWeComAppAdapter(adapter: unknown): adapter is WeComAppAdapter {
+  return adapter instanceof WeComAppAdapter;
 }

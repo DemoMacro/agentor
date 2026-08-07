@@ -126,6 +126,8 @@ function mapButtonStyle(style?: string): 1 | 2 | 3 | 4 {
   }
 }
 
+// ButtonElement.id 作为企微 button 的 key；用户点击卡片按钮时企微以 EventKey 回传该值，
+// handleWebhook 将其映射为 ActionEvent.actionId，供 chat.onAction(actionId, handler) 路由
 function mapButtons(
   children: (ButtonElement | LinkButtonElement | SelectElement | RadioSelectElement)[],
 ): WeComButtonItem[] {

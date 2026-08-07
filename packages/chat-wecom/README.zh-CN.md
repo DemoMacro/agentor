@@ -305,6 +305,43 @@ const card: CardElement = {
 await adapter.postMessage(threadId, card);
 ```
 
+### 卡片按钮回调闭环
+
+`button_interaction` / `vote_interaction` / `multiple_interaction` 卡片的按钮点击，以 chat-sdk 标准的交互动作接入：用户点击后企业微信回调 `template_card_event`，适配器解析后调用 `chat.processAction`，`ButtonElement.id` 映射为 `ActionEvent.actionId`，用 `chat.onAction(actionId, handler)` 响应。
+
+> 仅 **App（应用）** 模式支持按钮回调（Webhook 群机器人、Bot 模式无交互回调）。
+
+回调 XML 中的 `ResponseCode`（72 小时有效、一次性）用于 `updateTemplateCard` 更新卡片状态（如按钮变「已处理」）。发送卡片时 `/message/send` 响应也会返回 `response_code`，二者均可用于更新。
+
+```typescript
+import { isWeComAppAdapter, type WeComAppCallbackMessage } from "@agentor/chat-wecom";
+
+// 1. 注册按钮点击处理器（actionId = ButtonElement.id）
+chat.onAction("approve", async (event) => {
+  const raw = event.raw as WeComAppCallbackMessage;
+  console.log(`${event.user.userId} 点击 ${event.actionId}，taskId=${raw.taskId}`);
+
+  // 2. 用回调里的 responseCode 把按钮变为不可点击
+  if (isWeComAppAdapter(event.adapter) && raw.responseCode) {
+    await event.adapter.updateTemplateCard({
+      responseCode: raw.responseCode,
+      replaceName: "已同意",
+    });
+  }
+});
+```
+
+`updateTemplateCard` 参数：
+
+| 参数                                        | 说明                                                      |
+| ------------------------------------------- | --------------------------------------------------------- |
+| `responseCode`                              | 来自回调 `raw.responseCode` 或发送响应 `raw.responseCode` |
+| `replaceName`                               | 按钮变灰替换文案（与 `templateCard` 二选一）              |
+| `templateCard`                              | 整卡替换为新卡片（与 `replaceName` 二选一）               |
+| `userIds` / `partyIds` / `tagIds` / `atAll` | 更新范围，全部缺省时默认 `atAll` 更新所有接收者           |
+
+投票/多选卡片的用户提交结果在 `raw.selectedItems`（`{ questionKey, optionIds }[]`）。
+
 ## 加解密
 
 所有回调通信使用 AES-256-CBC 加密和 SHA1 签名校验：

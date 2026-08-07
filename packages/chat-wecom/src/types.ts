@@ -345,7 +345,19 @@ export interface WeComAppCallbackMessage {
   description?: string;
   url?: string;
   event?: string;
+  eventKey?: string;
+  taskId?: string;
+  cardType?: string;
+  responseCode?: string;
+  selectedItems?: WeComSelectedItem[];
   agentId?: string;
+}
+
+// 模板卡片回调的选中项（投票/多选型卡片用户提交结果）
+// https://developer.work.weixin.qq.com/document/path/90240
+export interface WeComSelectedItem {
+  questionKey: string;
+  optionIds: string[];
 }
 
 export interface WeComAppSendResponse extends WeComBaseResponse {
@@ -355,6 +367,19 @@ export interface WeComAppSendResponse extends WeComBaseResponse {
   unlicenseduser?: string;
   msgid?: string;
   response_code?: string;
+}
+
+// 更新模版卡片消息参数
+// https://developer.work.weixin.qq.com/document/path/96459
+// replaceName（按钮替换文案，按钮变灰）与 templateCard（整卡替换）二选一
+export interface WeComUpdateTemplateCardParams {
+  responseCode: string;
+  userIds?: string[];
+  partyIds?: number[];
+  tagIds?: number[];
+  atAll?: boolean;
+  replaceName?: string;
+  templateCard?: WeComTemplateCard;
 }
 
 export interface WeComAccessTokenResponse extends WeComBaseResponse {

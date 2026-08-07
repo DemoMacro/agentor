@@ -1,6 +1,6 @@
 {
   "name": "@agentor/chat-wecom",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "企业微信 (WeCom) Chat SDK 适配器，支持 Webhook 群机器人、智能机器人（回调 URL / WebSocket 长连接）和自建应用",
   "keywords": [
     "agentor",
