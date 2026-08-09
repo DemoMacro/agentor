@@ -404,6 +404,7 @@ export interface WeComBotThreadId {
 export interface WeComWebhookConfig {
   key: string;
   userName?: string;
+  cardActionUrl?: string;
   fetch?: typeof globalThis.fetch;
 }
 
@@ -413,6 +414,7 @@ export interface WeComBotCallbackConfig {
   token: string;
   encodingAESKey: string;
   userName?: string;
+  cardActionUrl?: string;
   fetch?: typeof globalThis.fetch;
 }
 
@@ -422,6 +424,7 @@ export interface WeComBotWebSocketConfig {
   botId: string;
   secret: string;
   userName?: string;
+  cardActionUrl?: string;
   wsUrl?: string;
   WebSocket?: typeof globalThis.WebSocket;
 }
@@ -435,5 +438,6 @@ export interface WeComAppConfig {
   token?: string;
   encodingAESKey?: string;
   userName?: string;
+  cardActionUrl?: string;
   fetch?: typeof globalThis.fetch;
 }

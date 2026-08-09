@@ -130,7 +130,12 @@ export class WeComBotCallbackAdapter implements Adapter<WeComBotThreadId, BotRaw
 
     const fetchFn = this.config.fetch ?? globalThis.fetch;
     const replyBody = card
-      ? { msgtype: "template_card", template_card: cardToTemplateCard(card) }
+      ? {
+          msgtype: "template_card",
+          template_card: cardToTemplateCard(card, {
+            cardActionUrl: this.config.cardActionUrl,
+          }),
+        }
       : { msgtype: "markdown", markdown: { content: text } };
 
     const response = await fetchFn(responseUrl, {

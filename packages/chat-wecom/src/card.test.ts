@@ -128,4 +128,70 @@ describe("cardToTemplateCard", () => {
     expect(result.horizontal_content_list).toHaveLength(2);
     expect(result.horizontal_content_list![1].type).toBe(1); // URL → type 1
   });
+
+  it("omits card_action for button_interaction without links", () => {
+    const card: CardElement = {
+      type: "card",
+      title: "审批",
+      children: [
+        {
+          type: "actions",
+          children: [{ type: "button", id: "ok", label: "确认" }],
+        },
+      ],
+    };
+    const result = cardToTemplateCard(card);
+    expect(result.card_action).toBeUndefined();
+  });
+
+  it("reuses first link as card_action for button_interaction", () => {
+    const card: CardElement = {
+      type: "card",
+      title: "审批",
+      children: [
+        { type: "link", url: "https://example.com/apply", label: "申请页" },
+        {
+          type: "actions",
+          children: [{ type: "button", id: "ok", label: "确认" }],
+        },
+      ],
+    };
+    const result = cardToTemplateCard(card);
+    expect(result.card_type).toBe("button_interaction");
+    expect(result.card_action?.url).toBe("https://example.com/apply");
+  });
+
+  it("reuses first link as card_action for text_notice (no misjump to wecom site)", () => {
+    const card: CardElement = {
+      type: "card",
+      title: "通知",
+      children: [{ type: "link", url: "https://example.com/detail", label: "查看详情" }],
+    };
+    const result = cardToTemplateCard(card);
+    expect(result.card_type).toBe("text_notice");
+    expect(result.card_action?.url).toBe("https://example.com/detail");
+  });
+
+  it("falls back to built-in default url for text_notice without links", () => {
+    const card: CardElement = {
+      type: "card",
+      title: "通知",
+      children: [],
+    };
+    const result = cardToTemplateCard(card);
+    expect(result.card_action?.type).toBe(1);
+    expect(result.card_action?.url).toBe("https://work.weixin.qq.com");
+  });
+
+  it("overrides default card_action url via cardActionUrl option", () => {
+    const card: CardElement = {
+      type: "card",
+      title: "通知",
+      children: [],
+    };
+    const result = cardToTemplateCard(card, {
+      cardActionUrl: "https://my.corp.com/home",
+    });
+    expect(result.card_action?.url).toBe("https://my.corp.com/home");
+  });
 });

@@ -138,6 +138,8 @@ async function sendCard() {
     subtitle: "请审批以下申请",
     children: [
       { type: "fields", children: [{ type: "field", label: "申请人", value: "张三" }] },
+      // LinkElement 同时作为 card_action（整卡点击跳转）与 jump_list（跳转指引）的来源
+      { type: "link", url: "https://github.com/DemoMacro/agentor", label: "项目仓库" },
       {
         type: "actions",
         children: [
@@ -152,7 +154,9 @@ async function sendCard() {
   console.log("Card Message ID:", result.id);
   console.log("Task ID:", result.raw.taskId);
   console.log("Response Code:", result.raw.responseCode);
-  console.log("在企业微信点击按钮，回调服务器会通过 processAction 更新卡片状态");
+  console.log(
+    "Click the card or the repo link to open GitHub; click a button to trigger the callback and update the card",
+  );
 }
 
 // --- 启动回调服务器 ---
@@ -260,12 +264,12 @@ async function startServer() {
     }) => {
       const raw = event.raw;
       console.log(
-        `\n[Card Action] ${event.user.userId} 点击了 "${event.actionId}" (taskId=${raw.taskId})`,
+        `\n[Card Action] ${event.user.userId} clicked "${event.actionId}" (taskId=${raw.taskId})`,
       );
       if (raw.responseCode && isWeComAppAdapter(event.adapter)) {
         const replaceName = event.actionId === "approve" ? "已同意" : "已拒绝";
         await event.adapter.updateTemplateCard({ responseCode: raw.responseCode, replaceName });
-        console.log(`  卡片已更新：按钮 → ${replaceName}`);
+        console.log(`  Card updated: button -> ${replaceName}`);
       }
     },
   } as never);

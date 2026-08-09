@@ -3,7 +3,7 @@
 import type { WeComBaseResponse } from "./types";
 
 // https://developer.work.weixin.qq.com/document/path/90455
-const WECOM_API_BASE = "https://qyapi.weixin.qq.com";
+export const WECOM_API_BASE = "https://qyapi.weixin.qq.com";
 
 // https://developer.work.weixin.qq.com/document/path/90455
 export class WeComError extends Error {

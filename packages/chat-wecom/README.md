@@ -142,36 +142,39 @@ const token = await adapter.getAccessToken();
 
 ### Webhook (Group Bot)
 
-| Option     | Type           | Default            | Description            |
-| ---------- | -------------- | ------------------ | ---------------------- |
-| `key`      | `string`       | —                  | Webhook Key (required) |
-| `userName` | `string`       | `"WeCom Webhook"`  | Bot display name       |
-| `fetch`    | `typeof fetch` | `globalThis.fetch` | Custom fetch function  |
+| Option          | Type           | Default            | Description                                                                |
+| --------------- | -------------- | ------------------ | -------------------------------------------------------------------------- |
+| `key`           | `string`       | —                  | Webhook Key (required)                                                     |
+| `userName`      | `string`       | `"WeCom Webhook"`  | Bot display name                                                           |
+| `cardActionUrl` | `string`       | WeCom site         | Fallback `card_action` URL when a card has no link (see Card Action below) |
+| `fetch`         | `typeof fetch` | `globalThis.fetch` | Custom fetch function                                                      |
 
 ### Bot (Smart Bot)
 
-| Option           | Type                        | Default                | Description                            |
-| ---------------- | --------------------------- | ---------------------- | -------------------------------------- |
-| `mode`           | `"callback" \| "websocket"` | `"websocket"`          | Connection mode                        |
-| `token`          | `string`                    | —                      | Callback Token (required for callback) |
-| `encodingAESKey` | `string`                    | —                      | Encryption Key (required for callback) |
-| `botId`          | `string`                    | —                      | Bot ID (required for websocket)        |
-| `secret`         | `string`                    | —                      | Bot Secret (required for websocket)    |
-| `userName`       | `string`                    | `"WeCom Bot"`          | Bot display name                       |
-| `wsUrl`          | `string`                    | WeCom default          | WebSocket server URL                   |
-| `WebSocket`      | `typeof WebSocket`          | `globalThis.WebSocket` | Custom WebSocket class                 |
+| Option           | Type                        | Default                | Description                                                                |
+| ---------------- | --------------------------- | ---------------------- | -------------------------------------------------------------------------- |
+| `mode`           | `"callback" \| "websocket"` | `"websocket"`          | Connection mode                                                            |
+| `token`          | `string`                    | —                      | Callback Token (required for callback)                                     |
+| `encodingAESKey` | `string`                    | —                      | Encryption Key (required for callback)                                     |
+| `botId`          | `string`                    | —                      | Bot ID (required for websocket)                                            |
+| `secret`         | `string`                    | —                      | Bot Secret (required for websocket)                                        |
+| `userName`       | `string`                    | `"WeCom Bot"`          | Bot display name                                                           |
+| `cardActionUrl`  | `string`                    | WeCom site             | Fallback `card_action` URL when a card has no link (see Card Action below) |
+| `wsUrl`          | `string`                    | WeCom default          | WebSocket server URL                                                       |
+| `WebSocket`      | `typeof WebSocket`          | `globalThis.WebSocket` | Custom WebSocket class                                                     |
 
 ### App (Application)
 
-| Option           | Type           | Default            | Description                             |
-| ---------------- | -------------- | ------------------ | --------------------------------------- |
-| `corpId`         | `string`       | —                  | Corporation ID (required)               |
-| `corpSecret`     | `string`       | —                  | Application Secret (required)           |
-| `agentId`        | `number`       | —                  | Application AgentId (required)          |
-| `token`          | `string`       | —                  | Callback Token (required for callbacks) |
-| `encodingAESKey` | `string`       | —                  | Encryption Key (required for callbacks) |
-| `userName`       | `string`       | `"WeCom App"`      | App display name                        |
-| `fetch`          | `typeof fetch` | `globalThis.fetch` | Custom fetch function                   |
+| Option           | Type           | Default            | Description                                                                |
+| ---------------- | -------------- | ------------------ | -------------------------------------------------------------------------- |
+| `corpId`         | `string`       | —                  | Corporation ID (required)                                                  |
+| `corpSecret`     | `string`       | —                  | Application Secret (required)                                              |
+| `agentId`        | `number`       | —                  | Application AgentId (required)                                             |
+| `token`          | `string`       | —                  | Callback Token (required for callbacks)                                    |
+| `encodingAESKey` | `string`       | —                  | Encryption Key (required for callbacks)                                    |
+| `userName`       | `string`       | `"WeCom App"`      | App display name                                                           |
+| `cardActionUrl`  | `string`       | WeCom site         | Fallback `card_action` URL when a card has no link (see Card Action below) |
+| `fetch`          | `typeof fetch` | `globalThis.fetch` | Custom fetch function                                                      |
 
 ## Platform Setup
 
@@ -279,6 +282,17 @@ Card type is automatically inferred from `CardElement` content:
 - Contains buttons → `button_interaction`
 - Contains image → `news_notice`
 - Default → `text_notice`
+
+### Card Action (Whole-Card Click)
+
+WeCom requires `card_action` (whole-card click jump) to be **required and a jump** for `text_notice` / `news_notice`, and **optional** for `button_interaction`. Since `CardElement` has no whole-card link field, the `card_action` URL resolves by priority:
+
+1. The card's first link (`LinkElement` / `LinkButtonElement`)
+2. The header image (`imageUrl`)
+3. The adapter's `cardActionUrl` option
+4. Built-in default (`https://work.weixin.qq.com`)
+
+`button_interaction` omits `card_action` when the card has no link/image (the card body is not clickable). `text_notice` / `news_notice` always set `card_action` (required), falling back to `cardActionUrl` or the built-in default.
 
 ```typescript
 import type { CardElement } from "chat";

@@ -263,7 +263,9 @@ export class WeComAppAdapter implements Adapter<WeComAppThreadId, WeComAppCallba
     userId: string,
     card: Parameters<typeof cardToTemplateCard>[0],
   ): Promise<RawMessage<WeComAppCallbackMessage>> {
-    const templateCard = cardToTemplateCard(card);
+    const templateCard = cardToTemplateCard(card, {
+      cardActionUrl: this.config.cardActionUrl,
+    });
     const appMessage: WeComAppMessage = {
       touser: userId,
       agentid: this.config.agentId,

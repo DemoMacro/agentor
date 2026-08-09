@@ -26,7 +26,17 @@ import type {
   WeComCardAction,
 } from "./types";
 
-export function cardToTemplateCard(card: CardElement): WeComTemplateCard {
+export interface CardConvertOptions {
+  // text_notice/news_notice 的 card_action 必填且必须跳转（企微协议 type∈[1,2]）。
+  // CardElement 无"整卡跳转"字段，无明确目标时用此 url 兜底；缺省则用内置默认。
+  cardActionUrl?: string;
+}
+
+export function cardToTemplateCard(
+  card: CardElement,
+  options?: CardConvertOptions,
+): WeComTemplateCard {
+  const cardActionUrl = options?.cardActionUrl;
   const cardType = inferCardType(card);
   switch (cardType) {
     case "button_interaction":
@@ -36,9 +46,9 @@ export function cardToTemplateCard(card: CardElement): WeComTemplateCard {
     case "multiple_interaction":
       return buildMultipleInteraction(card);
     case "news_notice":
-      return buildNewsNotice(card);
+      return buildNewsNotice(card, cardActionUrl);
     default:
-      return buildTextNotice(card);
+      return buildTextNotice(card, cardActionUrl);
   }
 }
 
@@ -186,9 +196,15 @@ function buildMainTitle(card: CardElement): { title: string; desc?: string } {
   };
 }
 
-function buildCardAction(card: CardElement): WeComCardAction {
-  if (card.imageUrl) return { type: 1, url: card.imageUrl };
-  return { type: 1, url: "https://work.weixin.qq.com" };
+// 企微协议要求 text_notice/news_notice 的 card_action 必填且必须跳转（type∈[1,2]），
+// CardElement 无"整卡跳转"字段，无明确目标时用此占位（可通过 cardActionUrl 覆盖）。
+const WECOM_DEFAULT_CARD_ACTION_URL = "https://work.weixin.qq.com";
+
+// card_action 的 url 优先复用卡片已有链接（jump_list 第一项，对齐 chat-sdk LinkElement 语义），
+// 其次头部图片；两者皆无时返回 undefined，由调用方按各卡片类型的必填约束决定是否兜底。
+function buildCardAction(card: CardElement, links: WeComJumpItem[]): WeComCardAction | undefined {
+  const url = card.imageUrl ?? links[0]?.url;
+  return url ? { type: 1, url } : undefined;
 }
 
 function buildTaskId(): string {
@@ -197,7 +213,7 @@ function buildTaskId(): string {
 
 // --- text_notice ---
 
-function buildTextNotice(card: CardElement): WeComTemplateCard {
+function buildTextNotice(card: CardElement, cardActionUrl?: string): WeComTemplateCard {
   const mainTitle = buildMainTitle(card);
   const fields = collectFields(card.children);
   const links = mapLinkElements(card.children);
@@ -209,6 +225,12 @@ function buildTextNotice(card: CardElement): WeComTemplateCard {
     links.push(...mapLinkButtons(actions.children));
   }
 
+  // card_action 必填：优先卡片已有链接/图片，无则用配置或内置默认兜底
+  const card_action = buildCardAction(card, links) ?? {
+    type: 1,
+    url: cardActionUrl ?? WECOM_DEFAULT_CARD_ACTION_URL,
+  };
+
   return {
     card_type: "text_notice",
     main_title: mainTitle,
@@ -216,14 +238,14 @@ function buildTextNotice(card: CardElement): WeComTemplateCard {
     ...(subText ? { sub_title_text: subText } : {}),
     ...(fields.length > 0 ? { horizontal_content_list: mapFields(fields) } : {}),
     ...(links.length > 0 ? { jump_list: links } : {}),
-    card_action: buildCardAction(card),
+    card_action,
     task_id: buildTaskId(),
   };
 }
 
 // --- news_notice ---
 
-function buildNewsNotice(card: CardElement): WeComTemplateCard {
+function buildNewsNotice(card: CardElement, cardActionUrl?: string): WeComTemplateCard {
   const mainTitle = buildMainTitle(card);
   const fields = collectFields(card.children);
   const links = mapLinkElements(card.children);
@@ -249,6 +271,12 @@ function buildNewsNotice(card: CardElement): WeComTemplateCard {
     links.push(...mapLinkButtons(actions.children));
   }
 
+  // card_action 必填：优先卡片已有链接/图片，无则用配置或内置默认兜底
+  const card_action = buildCardAction(card, links) ?? {
+    type: 1,
+    url: cardActionUrl ?? WECOM_DEFAULT_CARD_ACTION_URL,
+  };
+
   return {
     card_type: "news_notice",
     main_title: mainTitle,
@@ -256,7 +284,7 @@ function buildNewsNotice(card: CardElement): WeComTemplateCard {
     ...(subText ? { sub_title_text: subText } : {}),
     ...(fields.length > 0 ? { horizontal_content_list: mapFields(fields) } : {}),
     ...(links.length > 0 ? { jump_list: links } : {}),
-    card_action: buildCardAction(card),
+    card_action,
     task_id: buildTaskId(),
   };
 }
@@ -274,6 +302,9 @@ function buildButtonInteraction(card: CardElement): WeComTemplateCard {
   const links = mapLinkElements(card.children);
   if (actions) links.push(...mapLinkButtons(actions.children));
 
+  // card_action 可选：仅当卡片有明确链接/图片时设置，避免无意图时整卡误跳
+  const cardAction = buildCardAction(card, links);
+
   return {
     card_type: "button_interaction",
     main_title: mainTitle,
@@ -282,7 +313,7 @@ function buildButtonInteraction(card: CardElement): WeComTemplateCard {
     ...(fields.length > 0 ? { horizontal_content_list: mapFields(fields) } : {}),
     ...(links.length > 0 ? { jump_list: links } : {}),
     ...(buttons.length > 0 ? { button_list: buttons } : {}),
-    card_action: buildCardAction(card),
+    ...(cardAction ? { card_action: cardAction } : {}),
     task_id: buildTaskId(),
   };
 }

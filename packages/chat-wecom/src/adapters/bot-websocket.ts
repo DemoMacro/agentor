@@ -347,7 +347,9 @@ export class WeComBotWebSocketAdapter implements Adapter<WeComBotThreadId, BotRa
 
     const text = this.formatConverter.renderPostable(message);
     if (card) {
-      const templateCard = cardToTemplateCard(card);
+      const templateCard = cardToTemplateCard(card, {
+        cardActionUrl: this.config.cardActionUrl,
+      });
       this.wsManager.sendMessage(chatId, "template_card", templateCard);
     } else {
       this.wsManager.sendMessage(chatId, "markdown", { content: text });

@@ -5,7 +5,7 @@ import type { FileUpload } from "chat";
 
 import { decryptMedia } from "./crypto";
 import type { WeComMediaUploadResponse } from "./types";
-import { wecomUpload } from "./utils";
+import { WECOM_API_BASE, wecomUpload } from "./utils";
 
 const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif", "bmp"]);
 const VOICE_EXTENSIONS = new Set(["amr", "mp3", "wav"]);
@@ -101,10 +101,12 @@ export async function downloadAppMedia(
   fetch?: typeof globalThis.fetch,
 ): Promise<FetchEncryptedMediaResult> {
   const fetchFn = fetch ?? globalThis.fetch;
-  const url = `https://qyapi.weixin.qq.com/cgi-bin/media/get?access_token=${accessToken}&media_id=${mediaId}`;
+  const url = new URL("/cgi-bin/media/get", WECOM_API_BASE);
+  url.searchParams.set("access_token", accessToken);
+  url.searchParams.set("media_id", mediaId);
   const response = await fetchFn(url);
   const data = Buffer.from(await response.arrayBuffer());
-  const filename = extractFilename(response.headers, url);
+  const filename = extractFilename(response.headers, url.toString());
   return { data, filename };
 }
 

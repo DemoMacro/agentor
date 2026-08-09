@@ -66,7 +66,9 @@ export class WeComWebhookAdapter implements Adapter<WeComWebhookThreadId, WeComB
     // 卡片 → template_card
     const card = extractCard(message);
     if (card) {
-      const templateCard = cardToTemplateCard(card);
+      const templateCard = cardToTemplateCard(card, {
+        cardActionUrl: this.config.cardActionUrl,
+      });
       return this.sendTemplateCard(key, templateCard);
     }
 

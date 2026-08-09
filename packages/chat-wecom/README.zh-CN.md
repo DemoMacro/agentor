@@ -142,36 +142,39 @@ const token = await adapter.getAccessToken();
 
 ### Webhook (群机器人)
 
-| 选项       | 类型           | 默认值             | 说明               |
-| ---------- | -------------- | ------------------ | ------------------ |
-| `key`      | `string`       | —                  | Webhook Key (必填) |
-| `userName` | `string`       | `"WeCom Webhook"`  | 机器人显示名称     |
-| `fetch`    | `typeof fetch` | `globalThis.fetch` | 自定义 fetch 函数  |
+| 选项            | 类型           | 默认值             | 说明                                                            |
+| --------------- | -------------- | ------------------ | --------------------------------------------------------------- |
+| `key`           | `string`       | —                  | Webhook Key (必填)                                              |
+| `userName`      | `string`       | `"WeCom Webhook"`  | 机器人显示名称                                                  |
+| `cardActionUrl` | `string`       | 企微官网           | 卡片无链接时 `card_action` 的兜底 URL（见下文「整卡点击」小节） |
+| `fetch`         | `typeof fetch` | `globalThis.fetch` | 自定义 fetch 函数                                               |
 
 ### Bot (智能机器人)
 
-| 选项             | 类型                        | 默认值                 | 说明                               |
-| ---------------- | --------------------------- | ---------------------- | ---------------------------------- |
-| `mode`           | `"callback" \| "websocket"` | `"websocket"`          | 连接模式                           |
-| `token`          | `string`                    | —                      | 回调 Token (callback 模式必填)     |
-| `encodingAESKey` | `string`                    | —                      | 加解密 Key (callback 模式必填)     |
-| `botId`          | `string`                    | —                      | 机器人 ID (websocket 模式必填)     |
-| `secret`         | `string`                    | —                      | 机器人 Secret (websocket 模式必填) |
-| `userName`       | `string`                    | `"WeCom Bot"`          | 机器人显示名称                     |
-| `wsUrl`          | `string`                    | 企业微信默认           | WebSocket 服务地址                 |
-| `WebSocket`      | `typeof WebSocket`          | `globalThis.WebSocket` | 自定义 WebSocket 类                |
+| 选项             | 类型                        | 默认值                 | 说明                                                            |
+| ---------------- | --------------------------- | ---------------------- | --------------------------------------------------------------- |
+| `mode`           | `"callback" \| "websocket"` | `"websocket"`          | 连接模式                                                        |
+| `token`          | `string`                    | —                      | 回调 Token (callback 模式必填)                                  |
+| `encodingAESKey` | `string`                    | —                      | 加解密 Key (callback 模式必填)                                  |
+| `botId`          | `string`                    | —                      | 机器人 ID (websocket 模式必填)                                  |
+| `secret`         | `string`                    | —                      | 机器人 Secret (websocket 模式必填)                              |
+| `userName`       | `string`                    | `"WeCom Bot"`          | 机器人显示名称                                                  |
+| `cardActionUrl`  | `string`                    | 企微官网               | 卡片无链接时 `card_action` 的兜底 URL（见下文「整卡点击」小节） |
+| `wsUrl`          | `string`                    | 企业微信默认           | WebSocket 服务地址                                              |
+| `WebSocket`      | `typeof WebSocket`          | `globalThis.WebSocket` | 自定义 WebSocket 类                                             |
 
 ### App (应用)
 
-| 选项             | 类型           | 默认值             | 说明                        |
-| ---------------- | -------------- | ------------------ | --------------------------- |
-| `corpId`         | `string`       | —                  | 企业 ID (必填)              |
-| `corpSecret`     | `string`       | —                  | 应用 Secret (必填)          |
-| `agentId`        | `number`       | —                  | 应用 AgentId (必填)         |
-| `token`          | `string`       | —                  | 回调 Token (接收回调时必填) |
-| `encodingAESKey` | `string`       | —                  | 加解密 Key (接收回调时必填) |
-| `userName`       | `string`       | `"WeCom App"`      | 应用显示名称                |
-| `fetch`          | `typeof fetch` | `globalThis.fetch` | 自定义 fetch 函数           |
+| 选项             | 类型           | 默认值             | 说明                                                            |
+| ---------------- | -------------- | ------------------ | --------------------------------------------------------------- |
+| `corpId`         | `string`       | —                  | 企业 ID (必填)                                                  |
+| `corpSecret`     | `string`       | —                  | 应用 Secret (必填)                                              |
+| `agentId`        | `number`       | —                  | 应用 AgentId (必填)                                             |
+| `token`          | `string`       | —                  | 回调 Token (接收回调时必填)                                     |
+| `encodingAESKey` | `string`       | —                  | 加解密 Key (接收回调时必填)                                     |
+| `userName`       | `string`       | `"WeCom App"`      | 应用显示名称                                                    |
+| `cardActionUrl`  | `string`       | 企微官网           | 卡片无链接时 `card_action` 的兜底 URL（见下文「整卡点击」小节） |
+| `fetch`          | `typeof fetch` | `globalThis.fetch` | 自定义 fetch 函数                                               |
 
 ## 平台配置
 
@@ -279,6 +282,17 @@ const { data, filename } = await fetchEncryptedMedia(url, aeskey);
 - 包含按钮 → `button_interaction`
 - 包含图片 → `news_notice`
 - 默认 → `text_notice`
+
+### 整卡点击（card_action）
+
+企业微信要求 `text_notice` / `news_notice` 的 `card_action`（整卡点击跳转）**必填且必须是跳转**，`button_interaction` 则**可选**。由于 `CardElement` 没有「整卡链接」字段，`card_action` 的 URL 按以下优先级解析：
+
+1. 卡片的第一个链接（`LinkElement` / `LinkButtonElement`）
+2. 头部图片（`imageUrl`）
+3. 适配器的 `cardActionUrl` 配置
+4. 内置默认（`https://work.weixin.qq.com`）
+
+`button_interaction` 在卡片无链接/图片时省略 `card_action`（整卡不可点击）；`text_notice` / `news_notice` 始终设置 `card_action`（必填），无链接时回退到 `cardActionUrl` 或内置默认。
 
 ```typescript
 import type { CardElement } from "chat";
